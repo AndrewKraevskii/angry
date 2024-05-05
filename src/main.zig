@@ -1,107 +1,88 @@
 const std = @import("std");
 const rl = @import("raylib");
 const box2d = @import("./box2d.zig");
+const raymath = @import("raylib-math");
 
-const GameState = struct {
-    balls: []u32,
-    wall: [1]u32,
-    physics_world: box2d.World,
+pub const GameState = struct {
+    alloc: std.mem.Allocator,
+    position: @Vector(2, f32),
+};
+
+pub const Action = enum(u8) {
+    none,
+    exit,
 };
 
 const box_height = 10;
 const window_size = .{ 1920, 1080 };
 
-fn initGame(alloc: std.mem.Allocator) !GameState {
-    var world = box2d.World{
-        .gravity = .{
-            .y = 9.8,
-            .x = 0.0,
-        },
-        .iterations = 6,
-        .accumulateImpulses = true,
-        .warmStarting = true,
-        .positionCorrection = true,
-        .bodies = box2d.World.BodyMap.init(alloc),
-        .arbiters = box2d.World.ArbiterMap.init(alloc),
-    };
+// TODO: make it atomic (works fine without it)
+var gameTick: *const fn (self: *GameState) Action = undefined;
 
-    const balls = [_]struct { box2d.Vec2, box2d.Vec2, f32 }{ .{
-        .{ .x = 50.0, .y = 0.0 },
-        .{ .x = box_height * 4, .y = box_height },
-        1,
-    }, .{
-        .{ .x = 52.0, .y = 12.0 },
-        .{ .x = box_height, .y = box_height },
-        1,
-    } };
+fn compileShared(alloc: std.mem.Allocator, num: u32) !void {
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
 
-    const handlers = try alloc.alloc(u32, balls.len);
-    for (balls[0..], handlers) |ball, *handler| {
-        handler.* = world.addBody(
-            box2d.Body.init(
-                ball[0],
-                ball[1],
-                ball[2],
-            ),
-        );
-    }
+    var buf: [256]u8 = undefined;
+    const name = std.fmt.bufPrint(
+        &buf,
+        "-Dlib_name={}",
+        .{num},
+    ) catch unreachable;
+    const process_args = [_][]const u8{ "zig", "build", "-Dgame_only=true", name };
+    const res = try std.ChildProcess.run(.{
+        .allocator = arena.allocator(),
+        .argv = process_args[0..],
+    });
 
-    const wall = world.addBody(
-        box2d.Body.init(
-            .{ .x = 932.0, .y = 1100.0 },
-            .{ .x = 2000, .y = 100 },
-            std.math.inf(f32),
-        ),
-    );
-
-    return .{
-        .balls = handlers,
-        .wall = .{wall},
-        .physics_world = world,
-    };
-}
-
-fn drawBox(box: box2d.Body, color: rl.Color) void {
-    rl.drawRectangleV(
-        .{ .x = box.position.x - box.width.x / 2, .y = box.position.y - box.width.y / 2 },
-        .{ .x = box.width.x, .y = box.width.y },
-        color,
+    std.log.info(
+        "Recompiled: {s}\n{s}",
+        .{ res.stdout, res.stderr },
     );
 }
 
-fn updateGame(self: *GameState) void {
-    // update phisics
-    const dt = rl.getFrameTime();
-
-    self.physics_world.step(dt);
-
-    // draw screen
-    rl.beginDrawing();
-    rl.clearBackground(rl.Color.black);
-
-    for (self.balls) |ball_handler| {
-        const box = self.physics_world.bodies.get(ball_handler) orelse @panic("ball missing :(");
-        drawBox(box, rl.Color.red);
-    }
-
-    for (self.wall) |ball_handler| {
-        const box = self.physics_world.bodies.get(ball_handler) orelse @panic("ball missing :(");
-        drawBox(box, rl.Color.white);
-    }
-
-    rl.endDrawing();
+fn loadShared(num: u32) !void {
+    var buf: [256]u8 = undefined;
+    const name = std.fmt.bufPrint(
+        &buf,
+        "zig-out/lib/lib{}.so",
+        .{num},
+    ) catch unreachable;
+    var shared_lib = try std.DynLib.open(name);
+    gameTick = shared_lib.lookup(@TypeOf(gameTick), "gameTick") orelse return error.SymbolNotFound;
 }
 
 pub fn main() !void {
     const alloc = std.heap.c_allocator;
 
-    rl.initWindow(window_size[0], window_size[1], "Hello");
+    var state = GameState{
+        .position = .{ 50.0, 50.0 },
+        .alloc = alloc,
+    };
+    rl.initWindow(window_size[0], window_size[1], "Angry");
+    var i: u32 = 0;
+    try compileShared(alloc, i);
+    try loadShared(i);
+    i += 1;
 
-    var game = try initGame(alloc);
+    while (true) {
+        const action = gameTick(&state);
+        switch (action) {
+            .none => {},
+            .exit => break,
+        }
 
-    while (!rl.windowShouldClose()) {
-        updateGame(&game);
+        if (rl.isKeyPressed(rl.KeyboardKey.key_r)) {
+            const proc = try std.Thread.spawn(.{}, struct {
+                fn exec(num: u32) !void {
+                    try compileShared(alloc, num);
+                    try loadShared(num);
+                }
+            }.exec, .{i});
+            proc.detach();
+            i += 1;
+        }
     }
 
-    defer rl.closeWindow();
+    rl.closeWindow();
 }
