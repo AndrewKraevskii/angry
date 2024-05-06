@@ -17,6 +17,15 @@ export fn gameTick(state: *GameState) Action {
         rl.Color.red,
     );
 
+    for (0..300) |i| {
+        rl.drawCircle(
+            @intFromFloat(state.position[0] + @as(f32, @floatFromInt(i))),
+            @intFromFloat(state.position[1]),
+            10.0,
+            rl.Color.red,
+        );
+    }
+
     rl.endDrawing();
     state.position[0] = @floatCast(500 + 39 * @sin(rl.getTime()));
     state.position[1] = @floatCast(500 + 314 * @cos(rl.getTime()));

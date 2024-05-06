@@ -41,7 +41,7 @@ fn compileShared(alloc: std.mem.Allocator, num: u32) !void {
     );
 }
 
-fn loadShared(num: u32) !void {
+fn loadShared(num: u32) !std.DynLib {
     var buf: [256]u8 = undefined;
     const name = std.fmt.bufPrint(
         &buf,
@@ -52,6 +52,8 @@ fn loadShared(num: u32) !void {
     gameTick = shared_lib.lookup(@TypeOf(gameTick), "gameTick") orelse return error.SymbolNotFound;
 }
 
+const reload_dalay = 3;
+
 pub fn main() !void {
     const alloc = std.heap.c_allocator;
 
@@ -61,6 +63,7 @@ pub fn main() !void {
     };
     rl.initWindow(window_size[0], window_size[1], "Angry");
     var i: u32 = 0;
+    var previous_reload: f64 = rl.getTime();
     try compileShared(alloc, i);
     try loadShared(i);
     i += 1;
@@ -72,7 +75,7 @@ pub fn main() !void {
             .exit => break,
         }
 
-        if (rl.isKeyPressed(rl.KeyboardKey.key_r)) {
+        if (rl.isKeyPressed(rl.KeyboardKey.key_r) or (rl.getTime() - previous_reload) > reload_dalay) {
             const proc = try std.Thread.spawn(.{}, struct {
                 fn exec(num: u32) !void {
                     try compileShared(alloc, num);
@@ -80,6 +83,7 @@ pub fn main() !void {
                 }
             }.exec, .{i});
             proc.detach();
+            previous_reload = rl.getTime();
             i += 1;
         }
     }
