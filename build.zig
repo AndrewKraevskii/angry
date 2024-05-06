@@ -1,8 +1,6 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    // const lib_only = b.option(bool, "stuff", "") orelse false;
-
     const game_only = b.option(bool, "game_only", "only build the game shared library") orelse false;
     const lib_name = b.option([]const u8, "lib_name", "name to use when building shared") orelse "game";
 

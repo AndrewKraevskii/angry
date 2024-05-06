@@ -41,7 +41,7 @@ fn compileShared(alloc: std.mem.Allocator, num: u32) !void {
     );
 }
 
-fn loadShared(num: u32) !std.DynLib {
+fn loadShared(num: u32) !void {
     var buf: [256]u8 = undefined;
     const name = std.fmt.bufPrint(
         &buf,
@@ -49,9 +49,22 @@ fn loadShared(num: u32) !std.DynLib {
         .{num},
     ) catch unreachable;
     var shared_lib = try std.DynLib.open(name);
+    std.log.debug("", .{});
     gameTick = shared_lib.lookup(@TypeOf(gameTick), "gameTick") orelse return error.SymbolNotFound;
+    if (inited) {
+        mutex.lock();
+        defer mutex.unlock();
+        loaded_lib.close();
+    } else {
+        inited = true;
+    }
+    loaded_lib = shared_lib;
 }
 
+var mutex: std.Thread.Mutex = .{};
+
+var inited = false;
+var loaded_lib: std.DynLib = undefined;
 const reload_dalay = 3;
 
 pub fn main() !void {
@@ -69,7 +82,10 @@ pub fn main() !void {
     i += 1;
 
     while (true) {
+        std.debug.print("{*}\n", .{&gameTick});
+        mutex.lock();
         const action = gameTick(&state);
+        mutex.unlock();
         switch (action) {
             .none => {},
             .exit => break,
