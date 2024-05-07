@@ -2,15 +2,14 @@ const std = @import("std");
 const rl = @import("raylib");
 const box2d = @import("./box2d.zig");
 const raymath = @import("raylib-math");
+const Watcher = @import("./Watcher.zig");
 
-pub const GameState = struct {
-    alloc: std.mem.Allocator,
-    position: @Vector(2, f32),
-};
+const GameState = @import("./game.zig").GameState;
 
 pub const Action = enum(u8) {
     none,
     exit,
+    restart,
 };
 
 const box_height = 10;
@@ -19,9 +18,9 @@ const window_size = .{ 1920, 1080 };
 // TODO: make it atomic (works fine without it)
 var gameTick: *const fn (self: *GameState) Action = undefined;
 
-fn compileShared(alloc: std.mem.Allocator, num: u32) !void {
-    var arena = std.heap.ArenaAllocator.init(alloc);
-    defer arena.deinit();
+fn compileShared(num: u32) !void {
+    var buffer: [16 * 4096]u8 = undefined;
+    var alloc = std.heap.FixedBufferAllocator.init(&buffer);
 
     var buf: [256]u8 = undefined;
     const name = std.fmt.bufPrint(
@@ -29,9 +28,15 @@ fn compileShared(alloc: std.mem.Allocator, num: u32) !void {
         "-Dlib_name={}",
         .{num},
     ) catch unreachable;
-    const process_args = [_][]const u8{ "zig", "build", "-Dgame_only=true", name };
+    const process_args = [_][]const u8{
+        "zig",
+        "build",
+        "-Dgame_only=true",
+        name,
+    };
+
     const res = try std.ChildProcess.run(.{
-        .allocator = arena.allocator(),
+        .allocator = alloc.allocator(),
         .argv = process_args[0..],
     });
 
@@ -65,44 +70,63 @@ var mutex: std.Thread.Mutex = .{};
 
 var inited = false;
 var loaded_lib: std.DynLib = undefined;
-const reload_dalay = 3;
 
 pub fn main() !void {
     const alloc = std.heap.c_allocator;
+    try compileShared(0);
+    try loadShared(0);
 
-    var state = GameState{
-        .position = .{ 50.0, 50.0 },
-        .alloc = alloc,
-    };
     rl.initWindow(window_size[0], window_size[1], "Angry");
-    var i: u32 = 0;
-    var previous_reload: f64 = rl.getTime();
-    try compileShared(alloc, i);
-    try loadShared(i);
-    i += 1;
+    var state = GameState.init(alloc);
+
+    const updater = try std.Thread.spawn(.{}, update, .{});
 
     while (true) {
-        std.debug.print("{*}\n", .{&gameTick});
         mutex.lock();
         const action = gameTick(&state);
         mutex.unlock();
         switch (action) {
             .none => {},
             .exit => break,
-        }
-
-        if (rl.isKeyPressed(rl.KeyboardKey.key_r) or (rl.getTime() - previous_reload) > reload_dalay) {
-            const proc = try std.Thread.spawn(.{}, struct {
-                fn exec(num: u32) !void {
-                    try compileShared(alloc, num);
-                    try loadShared(num);
-                }
-            }.exec, .{i});
-            proc.detach();
-            previous_reload = rl.getTime();
-            i += 1;
+            .restart => {
+                restart(alloc);
+                break;
+            },
         }
     }
-
+    updater.detach();
     rl.closeWindow();
+}
+
+// TODO: better name
+fn update() !void {
+    var watcher = try Watcher.init();
+    errdefer watcher.deinit();
+    const dir = try std.fs.cwd().openDir("src", .{
+        .iterate = true,
+    });
+
+    var iterator = dir.iterate();
+    while (try iterator.next()) |file| {
+        if (file.kind == .file) {
+            std.log.debug("listen to file: {s}", .{file.name});
+            var buf: [std.os.linux.PATH_MAX]u8 = undefined;
+            const path = try std.fmt.bufPrint(&buf, "src/{s}", .{file.name});
+            try watcher.addFile(path);
+        }
+    }
+    var i: usize = 1;
+    while (true) : (i += 1) {
+        try watcher.listen();
+
+        try compileShared(@intCast(i));
+        try loadShared(@intCast(i));
+
+        std.log.info("hot realoaded", .{});
+    }
+}
+
+fn restart(alloc: std.mem.Allocator) void {
+    var child = std.process.Child.init(&[_][]const u8{ "zig", "build", "run" }, alloc);
+    child.spawn() catch {};
 }
