@@ -15,6 +15,10 @@ pub const GameState = struct {
     alloc: std.mem.Allocator,
     mouse_pressed: ?rl.Vector2 = null,
     balls: std.ArrayList(Ball),
+    state: enum {
+        pause,
+        play,
+    } = .play,
 
     pub fn init(alloc: std.mem.Allocator) !GameState {
         return .{
@@ -48,9 +52,9 @@ fn frac(a: anytype, b: anytype) f32 {
 
 const gravity = 1000;
 const strench_scale = 10;
-export fn gameTick(state: *GameState) Action {
-    // update physics
-    const ttl = 100;
+const ttl = 100;
+
+fn update_physics(state: *GameState) void {
     {
         if (rl.isMouseButtonReleased(.mouse_button_left)) {
             if (state.mouse_pressed) |start| {
@@ -100,35 +104,64 @@ export fn gameTick(state: *GameState) Action {
         }
     }
     _ = mouse_shift(state);
+}
+export fn gameTick(state: *GameState) Action {
+    if (rl.isKeyPressed(.key_space)) {
+        state.state = switch (state.state) {
+            .pause => .play,
+            .play => .pause,
+        };
+        std.log.debug("state changed: {any}", .{state.state});
+    }
 
+    // update physics
+    if (state.state == .play) {
+        update_physics(state);
+    }
     // draw screen
     rl.beginDrawing();
     rl.clearBackground(rl.Color.black);
-    if (state.mouse_pressed) |start| {
-        rl.drawCircle(@intFromFloat(start.x), @intFromFloat(start.y), 10, rl.Color.orange);
-        draw_trace(start, rl.getMousePosition());
-        rl.drawLine(
-            @intFromFloat(start.x),
-            @intFromFloat(start.y),
-            rl.getMouseX(),
-            rl.getMouseY(),
-            rl.Color.green,
-        );
-    }
+    {
+        if (state.mouse_pressed) |start| {
+            rl.drawCircle(@intFromFloat(start.x), @intFromFloat(start.y), 10, rl.Color.orange);
+            draw_trace(start, rl.getMousePosition());
+            rl.drawLine(
+                @intFromFloat(start.x),
+                @intFromFloat(start.y),
+                rl.getMouseX(),
+                rl.getMouseY(),
+                rl.Color.green,
+            );
+        }
 
-    rl.drawFPS(0, 0);
-    var buf: [100]u8 = undefined;
-    const number_of_balls = std.fmt.bufPrintZ(&buf, "balls: {d}", .{state.balls.items.len}) catch "Error :(";
-    rl.drawText(number_of_balls, 0, 100, 30, rl.Color.white);
-    for (state.balls.items) |ball| {
-        rl.drawCircle(
-            @intFromFloat(ball.pos.x),
-            @intFromFloat(ball.pos.y),
-            ball.size,
-            ball.color.alpha(ball.ttl / ttl),
-        );
+        rl.drawFPS(0, 0);
+        var buf: [100]u8 = undefined;
+        const number_of_balls = std.fmt.bufPrintZ(&buf, "balls: {d}", .{state.balls.items.len}) catch "Error :(";
+        rl.drawText(number_of_balls, 0, 100, 30, rl.Color.white);
+        for (state.balls.items) |ball| {
+            rl.drawCircle(
+                @intFromFloat(ball.pos.x),
+                @intFromFloat(ball.pos.y),
+                ball.size,
+                ball.color.alpha(ball.ttl / ttl),
+            );
+        }
     }
-
+    if (state.state == .pause) {
+        rl.beginBlendMode(@intFromEnum(rl.BlendMode.blend_multiplied));
+        rl.drawRectangle(0, 0, window_size[0], window_size[1], .{
+            .r = 100,
+            .g = 100,
+            .b = 100,
+            .a = 255,
+        });
+        rl.endBlendMode();
+        {
+            const font = 40;
+            const size = rl.measureText("Paused", font);
+            rl.drawText("Paused", @divFloor(window_size[0] - size, 2), window_size[1] / 2, font, rl.Color.white);
+        }
+    }
     rl.endDrawing();
     if (rl.windowShouldClose()) {
         return .exit;
