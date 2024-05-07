@@ -7,14 +7,22 @@ pub const Ball = struct {
     pos: rl.Vector2,
     speed: rl.Vector2,
     color: rl.Color,
-    size: f32 = 10,
+    size: f32 = 30,
     ttl: f32,
+};
+
+pub const Block = struct {
+    center: rl.Vector2,
+    size: rl.Vector2,
+    rotation: f32,
+    color: rl.Color,
 };
 
 pub const GameState = struct {
     alloc: std.mem.Allocator,
     mouse_pressed: ?rl.Vector2 = null,
     balls: std.ArrayList(Ball),
+    blocks: std.ArrayList(Block),
     state: enum {
         pause,
         play,
@@ -26,6 +34,9 @@ pub const GameState = struct {
             .balls = try std.ArrayList(Ball).initCapacity(
                 alloc,
                 4096,
+            ),
+            .blocks = std.ArrayList(Block).init(
+                alloc,
             ),
         };
     }
@@ -51,11 +62,47 @@ fn frac(a: anytype, b: anytype) f32 {
 }
 
 const gravity = 1000;
-const strench_scale = 10;
+const strench_scale = 5;
 const ttl = 100;
 
-fn update_physics(state: *GameState) void {
+fn handleColisions(state: *GameState) void {
+    for (state.balls.items, 0..) |*ball, i| {
+        for (state.balls.items, 0..) |*other_ball, j| {
+            if (i <= j) continue;
+
+            if (rlm.vector2Distance(ball.pos, other_ball.pos) >
+                (ball.size + other_ball.size)) continue;
+            const norm = rlm.vector2Normalize(rlm.vector2Subtract(ball.pos, other_ball.pos));
+            ball.speed = rlm.vector2Reflect(ball.speed, norm);
+            other_ball.speed = rlm.vector2Reflect(other_ball.speed, norm);
+        }
+    }
+}
+
+const friction_coef = 0.01;
+
+fn applyFriction(state: *GameState) void {
+    for (state.balls.items) |*ball| {
+        ball.speed = rlm.vector2Subtract(ball.speed, rlm.vector2Scale(rlm.vector2Normalize(ball.speed), friction_coef));
+    }
+}
+
+fn updatePhysics(state: *GameState) void {
     {
+        applyFriction(state);
+        handleColisions(state);
+
+        // Adding blocks
+        if (rl.isMouseButtonPressed(.mouse_button_right)) {
+            _ = state.blocks.append(.{
+                .center = rl.getMousePosition(),
+                .size = rl.Vector2{ .x = 10, .y = 10 },
+                .rotation = 0,
+                .color = rl.Color.brown,
+            }) catch {};
+        }
+
+        // Spawn balls
         if (rl.isMouseButtonReleased(.mouse_button_left)) {
             if (state.mouse_pressed) |start| {
                 const vec = calculate_speed(start, rl.getMousePosition());
@@ -68,6 +115,7 @@ fn update_physics(state: *GameState) void {
             }
         }
 
+        // Move balls
         for (state.balls.items) |*ball| {
             if (ball.ttl <= 0) {
                 continue;
@@ -78,6 +126,7 @@ fn update_physics(state: *GameState) void {
             ball.speed = rlm.vector2Add(ball.speed, .{ .x = 0, .y = gravity * rl.getFrameTime() });
         }
 
+        // Reflect bounds
         var i: usize = 0;
         while (i < state.balls.items.len) {
             if (state.balls.items[i].pos.y > window_size[1]) {
@@ -105,18 +154,22 @@ fn update_physics(state: *GameState) void {
     }
     _ = mouse_shift(state);
 }
+
 export fn gameTick(state: *GameState) Action {
     if (rl.isKeyPressed(.key_space)) {
         state.state = switch (state.state) {
             .pause => .play,
             .play => .pause,
         };
-        std.log.debug("state changed: {any}", .{state.state});
+
+        std.log.debug("state changed: {any}", .{
+            state.state,
+        });
     }
 
     // update physics
     if (state.state == .play) {
-        update_physics(state);
+        updatePhysics(state);
     }
     // draw screen
     rl.beginDrawing();
@@ -145,8 +198,28 @@ export fn gameTick(state: *GameState) Action {
                 ball.size,
                 ball.color.alpha(ball.ttl / ttl),
             );
+            rl.drawLineV(
+                ball.pos,
+                rlm.vector2Add(ball.pos, ball.speed),
+                rl.Color.blue,
+            );
+        }
+
+        for (state.blocks.items) |block| {
+            rl.drawRectanglePro(
+                .{
+                    .x = block.center.x,
+                    .y = block.center.y,
+                    .width = block.size.x,
+                    .height = block.size.y,
+                },
+                .{ .x = 5, .y = 5 },
+                block.rotation,
+                block.color,
+            );
         }
     }
+
     if (state.state == .pause) {
         rl.beginBlendMode(@intFromEnum(rl.BlendMode.blend_multiplied));
         rl.drawRectangle(0, 0, window_size[0], window_size[1], .{
@@ -162,6 +235,7 @@ export fn gameTick(state: *GameState) Action {
             rl.drawText("Paused", @divFloor(window_size[0] - size, 2), window_size[1] / 2, font, rl.Color.white);
         }
     }
+
     rl.endDrawing();
     if (rl.windowShouldClose()) {
         return .exit;
