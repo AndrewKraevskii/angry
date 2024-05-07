@@ -8,7 +8,7 @@ const GameState = @import("./game.zig").GameState;
 const Action = @import("game.zig").Action;
 
 const box_height = 10;
-const window_size = .{ 1920, 1080 };
+pub const window_size = .{ 1920, 1080 };
 
 // TODO: make it atomic (works fine without it)
 var gameTick: *const fn (self: *GameState) Action = undefined;
@@ -83,7 +83,7 @@ pub fn main() !void {
     try loadShared(0);
 
     rl.initWindow(window_size[0], window_size[1], "Angry");
-    var state = GameState.init(alloc);
+    var state = try GameState.init(alloc);
 
     const updater = try std.Thread.spawn(.{}, update, .{});
 
