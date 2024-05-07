@@ -3,53 +3,51 @@ const rl = @import("raylib");
 
 pub const GameState = struct {
     alloc: std.mem.Allocator,
-    texture: rl.Texture,
-    position: rl.Vector2,
-    speed: rl.Vector2,
 
     pub fn init(alloc: std.mem.Allocator) GameState {
-        const dvd = rl.imageText("DVD", 200, rl.Color.blue);
-        const texture = rl.loadTextureFromImage(dvd);
-        // rl.unloadImage(dvd);
-        return .{ .alloc = alloc, .texture = texture, .position = rl.Vector2{
-            .x = 10,
-            .y = 10,
-        }, .speed = rl.Vector2{
-            .x = 0.1,
-            .y = 0.1,
-        } };
+        return .{
+            .alloc = alloc,
+        };
     }
 };
 
-const Action = @import("main.zig").Action;
+pub const Action = enum(u8) {
+    none,
+    exit,
+    restart,
+};
 
 export fn gameTick(state: *GameState) Action {
     // update physics
-    state.position.x += state.speed.x;
-    state.position.y += state.speed.y;
-
-    if (state.position.x < 0) {
-        state.speed.x = @abs(state.speed.x);
-    }
-    if (state.position.y < 0) {
-        state.speed.y = @abs(state.speed.y);
-    }
-    if (state.position.x > 1920 - @as(f32, @floatFromInt(state.texture.width))) {
-        state.speed.x = -@abs(state.speed.x);
-    }
-    if (state.position.y > 1080 - @as(f32, @floatFromInt(state.texture.height))) {
-        state.speed.y = -@abs(state.speed.y);
-    }
-
     // draw screen
     rl.beginDrawing();
-    rl.clearBackground(rl.Color.black);
+    _ = state;
+    // rl.clearBackground(rl.Color.white);
 
-    rl.drawTexture(
-        state.texture,
-        @intFromFloat(state.position.x),
-        @intFromFloat(state.position.y),
-        rl.Color.white,
+    const start_x = rl.getRandomValue(0, 1920);
+    const start_y = rl.getRandomValue(0, 1080);
+    const end_x = rl.getRandomValue(0, 1920);
+    const end_y = rl.getRandomValue(0, 1080);
+
+    const rand = rl.getRandomValue(
+        0,
+        254,
+    );
+    // std.debug.print("{d}\n", .{rand});
+
+    // const color: rl.Color = @bitCast(rand);
+
+    rl.drawLine(
+        start_x,
+        start_y,
+        end_x,
+        end_y,
+        .{
+            .r = @intCast(rand),
+            .g = @truncate(@abs(start_x)),
+            .b = @truncate(@abs(start_y)),
+            .a = 255,
+        },
     );
 
     rl.endDrawing();

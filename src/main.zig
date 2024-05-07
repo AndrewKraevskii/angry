@@ -5,12 +5,7 @@ const raymath = @import("raylib-math");
 const Watcher = @import("./Watcher.zig");
 
 const GameState = @import("./game.zig").GameState;
-
-pub const Action = enum(u8) {
-    none,
-    exit,
-    restart,
-};
+const Action = @import("game.zig").Action;
 
 const box_height = 10;
 const window_size = .{ 1920, 1080 };
@@ -40,6 +35,18 @@ fn compileShared(num: u32) !void {
         .argv = process_args[0..],
     });
 
+    switch (res.term) {
+        .Exited => |code| {
+            if (code != 0) {
+                std.log.info(
+                    "Failed: {s}\n{s}",
+                    .{ res.stdout, res.stderr },
+                );
+                return error.FailedToRecompile;
+            }
+        },
+        else => {},
+    }
     std.log.info(
         "Recompiled: {s}\n{s}",
         .{ res.stdout, res.stderr },
@@ -54,7 +61,6 @@ fn loadShared(num: u32) !void {
         .{num},
     ) catch unreachable;
     var shared_lib = try std.DynLib.open(name);
-    std.log.debug("", .{});
     gameTick = shared_lib.lookup(@TypeOf(gameTick), "gameTick") orelse return error.SymbolNotFound;
     if (inited) {
         mutex.lock();
@@ -119,7 +125,9 @@ fn update() !void {
     while (true) : (i += 1) {
         try watcher.listen();
 
-        try compileShared(@intCast(i));
+        compileShared(@intCast(i)) catch
+            continue;
+
         try loadShared(@intCast(i));
 
         std.log.info("hot realoaded", .{});
