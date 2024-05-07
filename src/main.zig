@@ -1,6 +1,5 @@
 const std = @import("std");
 const rl = @import("raylib");
-const box2d = @import("./box2d.zig");
 const raymath = @import("raylib-math");
 const Watcher = @import("./Watcher.zig");
 

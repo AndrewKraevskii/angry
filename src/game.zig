@@ -46,14 +46,15 @@ fn frac(a: anytype, b: anytype) f32 {
     return @as(f32, @floatFromInt(a)) / @as(f32, @floatFromInt(b));
 }
 
+const gravity = 1000;
+const strench_scale = 10;
 export fn gameTick(state: *GameState) Action {
     // update physics
-    const ttl = 10;
+    const ttl = 100;
     {
         if (rl.isMouseButtonReleased(.mouse_button_left)) {
             if (state.mouse_pressed) |start| {
-                var vec = rlm.vector2Subtract(start, rl.getMousePosition());
-                vec = rlm.vector2Scale(vec, 10);
+                const vec = calculate_speed(start, rl.getMousePosition());
                 _ = state.balls.append(.{
                     .pos = start,
                     .ttl = ttl,
@@ -70,7 +71,7 @@ export fn gameTick(state: *GameState) Action {
             ball.ttl -= rl.getFrameTime();
             ball.pos = rlm.vector2Add(ball.pos, rlm.vector2Scale(ball.speed, rl.getFrameTime()));
 
-            ball.speed = rlm.vector2Add(ball.speed, .{ .x = 0, .y = 1000 * rl.getFrameTime() });
+            ball.speed = rlm.vector2Add(ball.speed, .{ .x = 0, .y = gravity * rl.getFrameTime() });
         }
 
         var i: usize = 0;
@@ -105,6 +106,7 @@ export fn gameTick(state: *GameState) Action {
     rl.clearBackground(rl.Color.black);
     if (state.mouse_pressed) |start| {
         rl.drawCircle(@intFromFloat(start.x), @intFromFloat(start.y), 10, rl.Color.orange);
+        draw_trace(start, rl.getMousePosition());
         rl.drawLine(
             @intFromFloat(start.x),
             @intFromFloat(start.y),
@@ -135,4 +137,29 @@ export fn gameTick(state: *GameState) Action {
         return .restart;
     }
     return .none;
+}
+
+fn calculate_speed(start: rl.Vector2, end: rl.Vector2) rl.Vector2 {
+    var vec = rlm.vector2Subtract(start, end);
+    vec = rlm.vector2Scale(vec, strench_scale);
+    return vec;
+}
+
+fn draw_trace(start: rl.Vector2, end: rl.Vector2) void {
+    const speed = calculate_speed(start, end);
+
+    const delta_t = 0.1;
+    const dots = 10;
+
+    for (0..dots) |i| {
+        const time = @as(f32, @floatFromInt(i)) * delta_t;
+        const x = start.x + time * speed.x;
+        const y = start.y + time * speed.y + gravity * time * time / 2;
+        rl.drawCircle(
+            @intFromFloat(x),
+            @intFromFloat(y),
+            2,
+            rl.Color.gray.alpha(1 - frac(i, dots)),
+        );
+    }
 }
