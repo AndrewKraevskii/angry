@@ -1,28 +1,28 @@
 const std = @import("std");
-
-const c = @cImport({
+pub const DebugDraw = @import("debug_draw.zig").DebugDraw;
+pub const c = @cImport({
     @cInclude("box2d/box2d.h");
 });
 
-// pub const Timer = struct {
-//     id: c.b2Timer,
+pub const Timer = struct {
+    id: c.b2Timer,
 
-//     pub fn create() Timer {
-//         return .{ .id = c.b2CreateTimer() };
-//     }
+    pub fn create() Timer {
+        return .{ .id = c.b2CreateTimer() };
+    }
 
-//     pub fn getTicks(self: *Timer) i64 {
-//         return c.b2GetTicks(&self.id);
-//     }
+    pub fn getTicks(self: *Timer) i64 {
+        return c.b2GetTicks(&self.id);
+    }
 
-//     pub fn getMilliseconds(self: *Timer) f32 {
-//         return c.b2GetMilliseconds(&self.id);
-//     }
+    pub fn getMilliseconds(self: *Timer) f32 {
+        return c.b2GetMilliseconds(&self.id);
+    }
 
-//     pub fn getMillisecondsAndReset(self: *Timer) f32 {
-//         return c.b2GetMillisecondsAndReset(&self.id);
-//     }
-// };
+    pub fn getMillisecondsAndReset(self: *Timer) f32 {
+        return c.b2GetMillisecondsAndReset(&self.id);
+    }
+};
 
 pub fn sleepMilliseconds(ms: f32) void {
     c.b2SleepMilliseconds(ms);
@@ -46,17 +46,17 @@ pub const World = struct {
         c.b2DestroyWorld(self.id);
     }
 
-    pub fn step(self: World, timeStep: f32, velocityIterations: i32, relaxIterations: i32) void {
-        c.b2World_Step(self.id, timeStep, velocityIterations, relaxIterations);
+    pub fn step(self: World, timeStep: f32, subStepCount: i32) void {
+        c.b2World_Step(self.id, timeStep, subStepCount);
     }
 
-    pub fn draw(self: World, debugDraw: anytype) void {
-        c.b2World_Draw(self.id, debugDraw);
+    pub fn draw(self: World, debugDraw: *DebugDraw) void {
+        c.b2World_Draw(self.id, @ptrCast(debugDraw));
     }
 
     pub fn createBody(self: World, def: *c.b2BodyDef) Body {
         return .{
-            .id = c.b2World_CreateBody(self.id, def),
+            .id = c.b2CreateBody(self.id, def),
         };
     }
 
@@ -312,14 +312,13 @@ pub const Body = struct {
         return c.b2Body_GetWorldCenterOfMass(self.id);
     }
 
-    // pub fn setMassData(massData: c.b2MassData) void {
-    //     c.b2Body_SetMassData(massData);
-    // }
+    pub fn setMassData(massData: c.b2MassData) void {
+        c.b2Body_SetMassData(massData);
+    }
 
-    // pub fn isAwake(self: Body) void {
-    //     //FIXME: this should return bool?
-    //     c.b2Body_IsAwake(self.id);
-    // }
+    pub fn isAwake(self: Body) void {
+        return c.b2Body_IsAwake(self.id);
+    }
 
     pub fn wake(self: Body) void {
         c.b2Body_Wake(self.id);
@@ -339,7 +338,7 @@ pub const Body = struct {
 
     pub fn createCircle(self: Body, def: c.b2ShapeDef, circle: c.b2Circle) Shape {
         return .{
-            .id = c.b2Body_CreateCircle(self.id, &def, &circle),
+            .id = c.b2CreateCircleShape(self.id, &def, &circle),
         };
     }
 
@@ -357,7 +356,7 @@ pub const Body = struct {
 
     pub fn createPolygon(self: Body, def: *c.b2ShapeDef, polygon: Polygon) Shape {
         return .{
-            .id = c.b2Body_CreatePolygon(self.id, def, &polygon.polygon),
+            .id = c.b2CreatePolygonShape(self.id, def, &polygon.polygon),
         };
     }
 };
