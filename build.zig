@@ -70,6 +70,7 @@ fn linkWithBox2d(
 
     lib.addIncludePath(box2c.path("src"));
     lib.addIncludePath(box2c.path("include"));
+    lib.addIncludePath(box2c.path("extern/simde"));
 
     inline for (&[_][]const u8{
         "aabb.c",
@@ -77,8 +78,10 @@ fn linkWithBox2d(
         "array.c",
         "bitset.c",
         "block_allocator.c",
+        "block_array.c",
         "body.c",
         "broad_phase.c",
+        "constraint_graph.c",
         "contact.c",
         "contact_solver.c",
         "core.c",
@@ -86,22 +89,26 @@ fn linkWithBox2d(
         "distance_joint.c",
         "dynamic_tree.c",
         "geometry.c",
-        "graph.c",
         "hull.c",
+        "id_pool.c",
+        "implementation.c",
         "island.c",
         "joint.c",
         "manifold.c",
-        "math.c",
+        "math_functions.c",
+        "motor_joint.c",
         "mouse_joint.c",
-        "pool.c",
         "prismatic_joint.c",
         "revolute_joint.c",
         "shape.c",
+        "solver.c",
+        "solver_set.c",
         "stack_allocator.c",
         "table.c",
         "timer.c",
         "types.c",
         "weld_joint.c",
+        "wheel_joint.c",
         "world.c",
     }) |file| {
         lib.addCSourceFile(.{

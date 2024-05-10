@@ -20,8 +20,8 @@
             .hash = "122043ae5d7dc535006aca53271bf37b64fcbb66851a7982f5914fa6166747884f60",
         },
         .box2d = .{
-            .url = "https://github.com/erincatto/box2c/archive/8052efea4585297359ba1bb5bd06984709de7323.tar.gz",
-            .hash = "1220f89fbd54e52f09ac9f8ea67d33a86dcf2658feb066aa3d127074b8a598a1f281",
+            .url = "https://github.com/erincatto/box2c/archive/8f89cdc8f0b3f77f9bfe5c6d089158b86cc55d92.tar.gz",
+            .hash = "12204af7d2a1c1d6cd27fe1b8dd1e09880d905f57c4a25aff51553ac95777439f444",
         },
     },
     .paths = .{
