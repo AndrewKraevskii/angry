@@ -3,6 +3,8 @@ const rl = @import("raylib");
 const rlm = @import("raylib-math");
 const window_size = @import("main.zig").window_size;
 
+const box2d = @import("box2d.zig");
+
 pub const Ball = struct {
     pos: rl.Vector2,
     speed: rl.Vector2,
@@ -20,6 +22,7 @@ pub const Block = struct {
 
 pub const GameState = struct {
     alloc: std.mem.Allocator,
+    physics_world: box2d.World,
     mouse_pressed: ?rl.Vector2 = null,
     balls: std.ArrayList(Ball),
     blocks: std.ArrayList(Block),
@@ -29,6 +32,8 @@ pub const GameState = struct {
     } = .play,
 
     pub fn init(alloc: std.mem.Allocator) !GameState {
+        var def = box2d.World.defaultDef();
+        const world = box2d.World.create(&def);
         return .{
             .alloc = alloc,
             .balls = try std.ArrayList(Ball).initCapacity(
@@ -38,6 +43,7 @@ pub const GameState = struct {
             .blocks = std.ArrayList(Block).init(
                 alloc,
             ),
+            .physics_world = world,
         };
     }
 };

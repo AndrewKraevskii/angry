@@ -19,6 +19,10 @@
             .url = "https://github.com/Not-Nik/raylib-zig/archive/devel.tar.gz",
             .hash = "122043ae5d7dc535006aca53271bf37b64fcbb66851a7982f5914fa6166747884f60",
         },
+        .box2d = .{
+            .url = "https://github.com/erincatto/box2c/archive/8052efea4585297359ba1bb5bd06984709de7323.tar.gz",
+            .hash = "1220f89fbd54e52f09ac9f8ea67d33a86dcf2658feb066aa3d127074b8a598a1f281",
+        },
     },
     .paths = .{
         // This makes *all* files, recursively, included in this package. It is generally

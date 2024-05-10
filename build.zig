@@ -41,6 +41,10 @@ pub fn build(b: *std.Build) void {
     shared_lib.root_module.addImport("raylib-math", raylib_math);
     shared_lib.root_module.addImport("rlgl", rlgl);
 
+    shared_lib.linkLibC();
+    linkWithBox2d(b, shared_lib);
+    linkWithBox2d(b, exe);
+
     exe.linkLibrary(shared_lib);
     // _ = lib_only;
     const run_cmd = b.addRunArtifact(exe);
@@ -54,4 +58,55 @@ pub fn build(b: *std.Build) void {
     run_cmd.step.dependOn(b.getInstallStep());
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
+}
+
+fn linkWithBox2d(
+    b: *std.Build,
+    lib: *std.Build.Step.Compile,
+) void {
+    lib.linkLibC();
+
+    const box2c = b.dependency("box2d", .{});
+
+    lib.addIncludePath(box2c.path("src"));
+    lib.addIncludePath(box2c.path("include"));
+
+    inline for (&[_][]const u8{
+        "aabb.c",
+        "allocate.c",
+        "array.c",
+        "bitset.c",
+        "block_allocator.c",
+        "body.c",
+        "broad_phase.c",
+        "contact.c",
+        "contact_solver.c",
+        "core.c",
+        "distance.c",
+        "distance_joint.c",
+        "dynamic_tree.c",
+        "geometry.c",
+        "graph.c",
+        "hull.c",
+        "island.c",
+        "joint.c",
+        "manifold.c",
+        "math.c",
+        "mouse_joint.c",
+        "pool.c",
+        "prismatic_joint.c",
+        "revolute_joint.c",
+        "shape.c",
+        "stack_allocator.c",
+        "table.c",
+        "timer.c",
+        "types.c",
+        "weld_joint.c",
+        "world.c",
+    }) |file| {
+        lib.addCSourceFile(.{
+            .file = box2c.path(b.pathJoin(&.{ "src", file })),
+            .flags = &.{},
+        });
+    }
 }
