@@ -2,7 +2,8 @@ const std = @import("std");
 const rl = @import("raylib");
 const rlm = @import("raylib-math");
 const window_size = @import("main.zig").window_size;
-
+const box2rlColor = @import("utils.zig").box2rlColor;
+const frac = @import("utils.zig").frac;
 const DebugDraw = @import("debug_draw.zig").DebugDraw;
 const box2d = @import("box2d.zig");
 
@@ -62,10 +63,6 @@ fn mouse_shift(state: *GameState) void {
     }
 }
 
-fn frac(a: anytype, b: anytype) f32 {
-    return @as(f32, @floatFromInt(a)) / @as(f32, @floatFromInt(b));
-}
-
 const gravity = 1000;
 const strench_scale = 5;
 const ttl = 100;
@@ -73,21 +70,19 @@ const ttl = 100;
 const friction_coef = 0.01;
 
 fn createBox(state: *GameState) void {
-    {
-        var body_def = box2d.Body.defaultDef();
-        body_def.type = box2d.c.b2_kinematicBody;
-        body_def.position = .{ .x = window_size[0] / 2, .y = window_size[1] - 100 };
+    var body_def = box2d.Body.defaultDef();
+    body_def.type = box2d.c.b2_kinematicBody;
+    body_def.position = .{ .x = window_size[0] / 2, .y = window_size[1] - 100 };
 
-        var body = state.physics_world.createBody(&body_def);
+    var body = state.physics_world.createBody(&body_def);
 
-        const box = box2d.Polygon.makeBox(window_size[0], 20);
-        var shape_def: box2d.c.b2ShapeDef = box2d.Shape.defaultDef();
-        const shape = body.createPolygon(&shape_def, box);
+    const box = box2d.Polygon.makeBox(window_size[0], 20);
+    var shape_def: box2d.c.b2ShapeDef = box2d.Shape.defaultDef();
+    const shape = body.createPolygon(&shape_def, box);
 
-        state.bodies.append(state.alloc, shape.getBody()) catch {
-            std.log.err("Failed to arr ball", .{});
-        };
-    }
+    state.bodies.append(state.alloc, shape.getBody()) catch {
+        std.log.err("Failed to arr ball", .{});
+    };
 }
 
 fn addCircle(
@@ -142,60 +137,6 @@ fn updatePhysics(state: *GameState) void {
     _ = mouse_shift(state);
 }
 
-fn box2rlColor(color: box2d.c.b2Color) rl.Color {
-    return .{
-        .r = @intFromFloat(std.math.clamp(color.r, 0, 1) * 255),
-        .g = @intFromFloat(std.math.clamp(color.g, 0, 1) * 255),
-        .b = @intFromFloat(std.math.clamp(color.b, 0, 1) * 255),
-        .a = @intFromFloat(std.math.clamp(1 - color.a, 0, 1) * 255),
-    };
-}
-
-fn DrawSolidCircle(transform: box2d.c.b2Transform, radius: f32, color: box2d.c.b2Color, context: *anyopaque) callconv(.C) void {
-    rl.drawCircle(@intFromFloat(transform.p.x), @intFromFloat(transform.p.y), radius, box2rlColor(color));
-    _ = context;
-}
-
-fn DrawPolygon(vertices: [*]box2d.c.b2Vec2, vertexCount: c_int, color: box2d.c.b2Color, context: *anyopaque) callconv(.C) void {
-    var buf: [box2d.c.b2_maxPolygonVertices + 1]box2d.c.b2Vec2 = undefined;
-    @memcpy(buf[0..@intCast(vertexCount)], vertices);
-    buf[@intCast(vertexCount)] = buf[0];
-
-    const rl_ver: [*]rl.Vector2 = @ptrCast(&buf);
-
-    rl.drawLineStrip(rl_ver[0..@intCast(vertexCount + 1)], box2rlColor(color));
-    _ = context;
-}
-
-fn DrawSolidPolygon(transform: box2d.c.b2Transform, vertices: [*]const box2d.c.b2Vec2, vertexCount: c_int, radius: f32, color: box2d.c.b2Color, context: *anyopaque) callconv(.C) void {
-    _ = transform;
-    _ = context;
-    _ = radius;
-    var buf: [box2d.c.b2_maxPolygonVertices + 1]box2d.c.b2Vec2 = undefined;
-    @memcpy(buf[0..@intCast(vertexCount)], vertices);
-    buf[@intCast(vertexCount)] = buf[0];
-
-    const rl_ver: [*]rl.Vector2 = @ptrCast(&buf);
-
-    rl.drawTriangleStrip(rl_ver[0..@intCast(vertexCount + 1)], box2rlColor(color));
-}
-
-fn DrawTransform(transform: box2d.c.b2Transform, context: *anyopaque) callconv(.C) void {
-    rl.drawLine(
-        @intFromFloat(transform.p.x),
-        @intFromFloat(transform.p.y),
-        @intFromFloat(transform.p.x + transform.q.c * 30),
-        @intFromFloat(transform.p.y + transform.q.s * 30),
-        rl.Color.blue,
-    );
-    _ = context;
-}
-
-fn DrawString(position: box2d.c.b2Vec2, s: [*:0]const u8, context: *anyopaque) callconv(.C) void {
-    rl.drawText(std.mem.sliceTo(s, 0), @intFromFloat(position.x), @intFromFloat(position.y), 10, rl.Color.white);
-    _ = context;
-}
-
 export fn gameTick(state: *GameState) Action {
     if (rl.isKeyPressed(.key_space)) {
         state.state = switch (state.state) {
@@ -214,7 +155,7 @@ export fn gameTick(state: *GameState) Action {
     }
     // draw screen
     rl.beginDrawing();
-    rl.clearBackground(rl.Color.black);
+    rl.clearBackground(rl.Color.dark_gray);
     {
         if (state.mouse_pressed) |start| {
             rl.drawCircle(@intFromFloat(start.x), @intFromFloat(start.y), 10, rl.Color.orange);
@@ -232,19 +173,7 @@ export fn gameTick(state: *GameState) Action {
         const number_of_balls = std.fmt.bufPrintZ(&buf, "balls: {d}", .{state.bodies.items.len}) catch "Error :(";
         rl.drawText(number_of_balls, 0, 100, 30, rl.Color.white);
 
-        // for (state.bodies.items) |body| {
-        //     // const pos = body.getPosition();
-
-        //     // rl.drawCircle(@intFromFloat(pos.x), @intFromFloat(pos.y), 30, rl.Color.red);
-        //     sta
-        // }
-        var draw = DebugDraw{
-            .DrawSolidCircle = DrawSolidCircle,
-            .DrawPolygon = DrawPolygon,
-            .DrawString = DrawString,
-            .DrawSolidPolygon = DrawSolidPolygon,
-            .DrawTransform = DrawTransform,
-        };
+        var draw = DebugDraw{};
         state.physics_world.draw(&draw);
         rl.drawFPS(0, 0);
     }

@@ -4,6 +4,9 @@ const b2Color = box2d.c.b2Color;
 const b2Transform = box2d.c.b2Transform;
 const b2AABB = box2d.c.b2AABB;
 const std = @import("std");
+const rl = @import("raylib");
+
+const box2rlColor = @import("utils.zig").box2rlColor;
 
 pub const DebugDraw = extern struct {
     /// Draw a closed polygon provided in CCW order.
@@ -53,23 +56,29 @@ pub const DebugDraw = extern struct {
     context: ?*anyopaque = null,
 };
 
-fn DrawPolygon(vertices: [*]b2Vec2, vertexCount: c_int, color: b2Color, context: *anyopaque) callconv(.C) void {
-    std.log.debug("DrawPolygon", .{});
-    _ = vertices;
-    _ = vertexCount;
-    _ = color;
+fn DrawPolygon(vertices: [*]box2d.c.b2Vec2, vertexCount: c_int, color: box2d.c.b2Color, context: *anyopaque) callconv(.C) void {
+    var buf: [box2d.c.b2_maxPolygonVertices + 1]box2d.c.b2Vec2 = undefined;
+    @memcpy(buf[0..@intCast(vertexCount)], vertices);
+    buf[@intCast(vertexCount)] = buf[0];
+
+    const rl_ver: [*]rl.Vector2 = @ptrCast(&buf);
+
+    rl.drawLineStrip(rl_ver[0..@intCast(vertexCount + 1)], box2rlColor(color));
     _ = context;
 }
 
 /// Draw a solid closed polygon provided in CCW order.
-fn DrawSolidPolygon(transform: b2Transform, vertices: [*]const b2Vec2, vertexCount: c_int, radius: f32, color: b2Color, context: *anyopaque) callconv(.C) void {
-    std.log.debug("DrawSolidPolygon", .{});
+fn DrawSolidPolygon(transform: box2d.c.b2Transform, vertices: [*]const box2d.c.b2Vec2, vertexCount: c_int, radius: f32, color: box2d.c.b2Color, context: *anyopaque) callconv(.C) void {
     _ = transform;
-    _ = vertices;
-    _ = vertexCount;
-    _ = radius;
-    _ = color;
     _ = context;
+    _ = radius;
+    var buf: [box2d.c.b2_maxPolygonVertices + 1]box2d.c.b2Vec2 = undefined;
+    @memcpy(buf[0..@intCast(vertexCount)], vertices);
+    buf[@intCast(vertexCount)] = buf[0];
+
+    const rl_ver: [*]rl.Vector2 = @ptrCast(&buf);
+
+    rl.drawTriangleStrip(rl_ver[0..@intCast(vertexCount + 1)], box2rlColor(color));
 }
 
 /// Draw a circle.
@@ -82,11 +91,8 @@ fn DrawCircle(center: b2Vec2, radius: f32, color: b2Color, context: *anyopaque) 
 }
 
 /// Draw a solid circle.
-fn DrawSolidCircle(transform: b2Transform, radius: f32, color: b2Color, context: *anyopaque) callconv(.C) void {
-    std.log.debug("DrawSolidCircle", .{});
-    _ = transform;
-    _ = radius;
-    _ = color;
+fn DrawSolidCircle(transform: box2d.c.b2Transform, radius: f32, color: box2d.c.b2Color, context: *anyopaque) callconv(.C) void {
+    rl.drawCircle(@intFromFloat(transform.p.x), @intFromFloat(transform.p.y), radius, box2rlColor(color));
     _ = context;
 }
 
@@ -111,34 +117,42 @@ fn DrawSolidCapsule(p1: b2Vec2, p2: b2Vec2, radius: f32, color: b2Color, context
 }
 
 /// Draw a line segment.
-fn DrawSegment(p1: b2Vec2, p2: b2Vec2, color: b2Color, context: *anyopaque) callconv(.C) void {
-    std.log.debug("DrawSegment", .{});
-    _ = p1;
-    _ = p2;
-    _ = color;
+fn DrawSegment(p1: box2d.c.b2Vec2, p2: box2d.c.b2Vec2, color: box2d.c.b2Color, context: *anyopaque) callconv(.C) void {
+    rl.drawLine(
+        @intFromFloat(p1.x),
+        @intFromFloat(p1.y),
+        @intFromFloat(p2.x),
+        @intFromFloat(p2.y),
+        box2rlColor(color),
+    );
     _ = context;
 }
 
 /// Draw a transform. Choose your own length scale.
-fn DrawTransform(transform: b2Transform, context: *anyopaque) callconv(.C) void {
-    std.log.debug("DrawTransform", .{});
-    _ = transform;
+fn DrawTransform(transform: box2d.c.b2Transform, context: *anyopaque) callconv(.C) void {
+    rl.drawLine(
+        @intFromFloat(transform.p.x),
+        @intFromFloat(transform.p.y),
+        @intFromFloat(transform.p.x + transform.q.c * 30),
+        @intFromFloat(transform.p.y + transform.q.s * 30),
+        rl.Color.blue,
+    );
     _ = context;
 }
 
 /// Draw a point.
-fn DrawPoint(position: b2Vec2, size: f32, color: b2Color, context: *anyopaque) callconv(.C) void {
-    std.log.debug("DrawPoint", .{});
-    _ = position;
-    _ = size;
-    _ = color;
+fn DrawPoint(position: box2d.c.b2Vec2, size: f32, color: box2d.c.b2Color, context: *anyopaque) callconv(.C) void {
+    rl.drawCircle(
+        @intFromFloat(position.x),
+        @intFromFloat(position.y),
+        size,
+        box2rlColor(color),
+    );
     _ = context;
 }
 
 /// Draw a string.
-fn DrawString(position: b2Vec2, s: [*:0]const u8, context: *anyopaque) callconv(.C) void {
-    std.log.debug("DrawString", .{});
-    _ = position;
-    _ = s;
+fn DrawString(position: box2d.c.b2Vec2, s: [*:0]const u8, context: *anyopaque) callconv(.C) void {
+    rl.drawText(std.mem.sliceTo(s, 0), @intFromFloat(position.x), @intFromFloat(position.y), 10, rl.Color.white);
     _ = context;
 }
