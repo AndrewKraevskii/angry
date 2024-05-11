@@ -137,7 +137,7 @@ fn updatePhysics(state: *GameState) void {
     _ = mouse_shift(state);
 }
 
-export fn gameTick(state: *GameState) Action {
+export fn gameTick(state: *GameState) callconv(.C) Action {
     if (rl.isKeyPressed(.key_space)) {
         state.state = switch (state.state) {
             .pause => .play,

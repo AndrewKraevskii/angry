@@ -1,12 +1,21 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    const game_only = b.option(bool, "game_only", "only build the game shared library") orelse false;
-    const lib_name = b.option([]const u8, "lib_name", "name to use when building shared") orelse "game";
+    const with_hot_reloading = b.option(bool, "hot_reload", "add ability to hot reload game (linux only)") orelse false;
 
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    if (with_hot_reloading) {
+        build_hot_reload(b, target, optimize);
+    } else {
+        build_plain(b, target, optimize);
+    }
+}
+
+fn build_hot_reload(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
+    const game_only = b.option(bool, "game_only", "only build the game shared library") orelse false;
+    const lib_name = b.option([]const u8, "lib_name", "name to use when building shared") orelse "game";
     const shared_lib = b.addSharedLibrary(.{
         .name = lib_name,
         .root_source_file = b.path("src/game.zig"),
@@ -31,6 +40,12 @@ pub fn build(b: *std.Build) void {
     const rlgl = raylib_dep.module("rlgl");
     const raylib_artifact = raylib_dep.artifact("raylib");
 
+    const options = b.addOptions();
+    options.addOption(bool, "hot_reload", true);
+
+    exe.root_module.addOptions("config", options);
+    shared_lib.root_module.addOptions("config", options);
+
     exe.linkLibrary(raylib_artifact);
     exe.root_module.addImport("raylib", raylib);
     exe.root_module.addImport("raylib-math", raylib_math);
@@ -54,6 +69,60 @@ pub fn build(b: *std.Build) void {
         b.installArtifact(exe);
         b.installArtifact(shared_lib);
     }
+
+    run_cmd.step.dependOn(b.getInstallStep());
+    const run_step = b.step("run", "Run the app");
+    run_step.dependOn(&run_cmd.step);
+}
+
+fn build_plain(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
+    const shared_lib = b.addSharedLibrary(.{
+        .name = "game",
+        .root_source_file = b.path("src/game.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const exe = b.addExecutable(.{
+        .name = "angry",
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const raylib_dep = b.dependency("raylib-zig", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const raylib = raylib_dep.module("raylib");
+    const raylib_math = raylib_dep.module("raylib-math");
+    const rlgl = raylib_dep.module("rlgl");
+    const raylib_artifact = raylib_dep.artifact("raylib");
+
+    const options = b.addOptions();
+    options.addOption(bool, "hot_reload", false);
+    exe.root_module.addOptions("config", options);
+    shared_lib.root_module.addOptions("config", options);
+
+    exe.linkLibrary(raylib_artifact);
+    exe.root_module.addImport("raylib", raylib);
+    exe.root_module.addImport("raylib-math", raylib_math);
+    exe.root_module.addImport("rlgl", rlgl);
+
+    shared_lib.linkLibrary(raylib_artifact);
+    shared_lib.root_module.addImport("raylib", raylib);
+    shared_lib.root_module.addImport("raylib-math", raylib_math);
+    shared_lib.root_module.addImport("rlgl", rlgl);
+
+    shared_lib.linkLibC();
+    linkWithBox2d(b, shared_lib);
+    linkWithBox2d(b, exe);
+
+    exe.linkLibrary(shared_lib);
+    const run_cmd = b.addRunArtifact(exe);
+
+    b.installArtifact(exe);
 
     run_cmd.step.dependOn(b.getInstallStep());
     const run_step = b.step("run", "Run the app");

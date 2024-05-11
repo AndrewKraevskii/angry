@@ -10,7 +10,13 @@ const box_height = 10;
 pub const window_size = .{ 1920, 1080 };
 
 // TODO: make it atomic (works fine without it)
-var gameTick: *const fn (self: *GameState) Action = undefined;
+var gameTick: *const fn (self: *GameState) callconv(.C) Action = if (!@import("config").hot_reload)
+    @extern(*const fn (self: *GameState) callconv(.C) Action, std.builtin.ExternOptions{
+        .name = "gameTick",
+        .library_name = "game",
+    })
+else
+    undefined;
 
 fn compileShared(num: u32) !void {
     var buffer: [16 * 4096]u8 = undefined;
@@ -76,21 +82,29 @@ var mutex: std.Thread.Mutex = .{};
 var inited = false;
 var loaded_lib: std.DynLib = undefined;
 
+const hot_reload = @import("config").hot_reload;
+
 pub fn main() !void {
     const alloc = std.heap.c_allocator;
-    try compileShared(0);
-    try loadShared(0);
 
+    if (hot_reload) {
+        try compileShared(0);
+        try loadShared(0);
+    }
     rl.initWindow(window_size[0], window_size[1], "Angry");
     var state = try GameState.init(alloc);
 
-    const updater = try std.Thread.spawn(.{}, update, .{});
+    const updater = if (hot_reload)
+        try std.Thread.spawn(.{}, update, .{})
+    else
+        void;
 
     while (true) {
-        mutex.lock();
-        const action = gameTick(&state);
-        mutex.unlock();
-        switch (action) {
+        if (hot_reload)
+            mutex.lock();
+
+        defer if (hot_reload) mutex.unlock();
+        switch (gameTick(&state)) {
             .none => {},
             .exit => break,
             .restart => {
@@ -99,7 +113,9 @@ pub fn main() !void {
             },
         }
     }
-    updater.detach();
+    if (hot_reload) {
+        updater.detach();
+    }
     rl.closeWindow();
 }
 
