@@ -1,6 +1,6 @@
 const std = @import("std");
-const rl = @import("raylib");
-const rlm = @import("raylib-math");
+pub const rl = @import("raylib");
+pub const rlm = @import("raylib-math");
 const window_size = @import("main.zig").window_size;
 const box2rlColor = @import("utils.zig").box2rlColor;
 const frac = @import("utils.zig").frac;
@@ -28,6 +28,7 @@ pub const GameState = struct {
     camera: rl.Camera2D,
 
     pub fn init(alloc: std.mem.Allocator) !GameState {
+        rl.initWindow(window_size[0], window_size[1], "Angry");
         var def = box2d.World.defaultDef();
         def.gravity = .{ .y = gravity, .x = 0 };
         const world = box2d.World.create(&def);
@@ -45,6 +46,10 @@ pub const GameState = struct {
         };
         createBox(&state);
         return state;
+    }
+    pub fn deinit(self: *@This()) void {
+        _ = self;
+        rl.closeWindow();
     }
 };
 
@@ -137,7 +142,7 @@ fn updatePhysics(state: *GameState) void {
     _ = mouse_shift(state);
 }
 
-export fn gameTick(state: *GameState) callconv(.C) Action {
+pub export fn gameTick(state: *GameState) callconv(.C) Action {
     if (rl.isKeyPressed(.key_space)) {
         state.state = switch (state.state) {
             .pause => .play,
