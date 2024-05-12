@@ -144,6 +144,7 @@ fn updatePhysics(state: *GameState) void {
 }
 
 pub export fn gameTick(state: *GameState) callconv(.C) Action {
+    std.log.debug("Game tick", .{});
     if (rl.isKeyPressed(.key_space)) {
         state.state = switch (state.state) {
             .pause => .play,

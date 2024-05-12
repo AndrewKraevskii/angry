@@ -10,6 +10,7 @@ pub fn main() !void {
     const alloc = std.heap.c_allocator;
 
     var state = try GameState.init(alloc);
+    std.log.info("Game initialized", .{});
 
     while (true) {
         switch (gameTick(&state)) {
@@ -20,5 +21,6 @@ pub fn main() !void {
             },
         }
     }
+    std.log.info("Closing game", .{});
     state.deinit();
 }
