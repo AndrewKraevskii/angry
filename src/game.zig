@@ -29,6 +29,7 @@ pub const GameState = struct {
 
     pub fn init(alloc: std.mem.Allocator) !GameState {
         rl.initWindow(window_size[0], window_size[1], "Angry");
+        rl.setTargetFPS(60);
         var def = box2d.World.defaultDef();
         def.gravity = .{ .y = gravity, .x = 0 };
         const world = box2d.World.create(&def);
@@ -144,6 +145,9 @@ fn updatePhysics(state: *GameState) void {
 }
 
 pub export fn gameTick(state: *GameState) callconv(.C) Action {
+    if (rl.windowShouldClose()) {
+        return .exit;
+    }
     std.log.debug("Game tick", .{});
     if (rl.isKeyPressed(.key_space)) {
         state.state = switch (state.state) {
@@ -200,9 +204,6 @@ pub export fn gameTick(state: *GameState) callconv(.C) Action {
     }
 
     rl.endDrawing();
-    if (rl.windowShouldClose()) {
-        return .exit;
-    }
     if (rl.isKeyPressed(rl.KeyboardKey.key_r)) {
         return .restart;
     }
