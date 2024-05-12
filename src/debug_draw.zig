@@ -57,18 +57,20 @@ pub const DebugDraw = extern struct {
 };
 
 fn DrawPolygon(vertices: [*]box2d.c.b2Vec2, vertexCount: c_int, color: box2d.c.b2Color, context: *anyopaque) callconv(.C) void {
+    std.debug.assert(vertexCount <= box2d.c.b2_maxPolygonVertices);
+    _ = context;
     var buf: [box2d.c.b2_maxPolygonVertices + 1]box2d.c.b2Vec2 = undefined;
     @memcpy(buf[0..@intCast(vertexCount)], vertices);
     buf[@intCast(vertexCount)] = buf[0];
 
-    const rl_ver: [*]rl.Vector2 = @ptrCast(&buf);
+    const rl_ver: [*]rl.Vector2 = @ptrCast(&buf[0]);
 
     rl.drawLineStrip(rl_ver[0..@intCast(vertexCount + 1)], box2rlColor(color));
-    _ = context;
 }
 
 /// Draw a solid closed polygon provided in CCW order.
 fn DrawSolidPolygon(transform: box2d.c.b2Transform, vertices: [*]const box2d.c.b2Vec2, vertexCount: c_int, radius: f32, color: box2d.c.b2Color, context: *anyopaque) callconv(.C) void {
+    std.debug.assert(vertexCount <= box2d.c.b2_maxPolygonVertices);
     _ = transform;
     _ = context;
     _ = radius;
@@ -76,7 +78,7 @@ fn DrawSolidPolygon(transform: box2d.c.b2Transform, vertices: [*]const box2d.c.b
     @memcpy(buf[0..@intCast(vertexCount)], vertices);
     buf[@intCast(vertexCount)] = buf[0];
 
-    const rl_ver: [*]rl.Vector2 = @ptrCast(&buf);
+    const rl_ver: [*]rl.Vector2 = @ptrCast(&buf[0]);
 
     rl.drawTriangleStrip(rl_ver[0..@intCast(vertexCount + 1)], box2rlColor(color));
 }

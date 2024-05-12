@@ -48,8 +48,9 @@ pub const GameState = struct {
         return state;
     }
     pub fn deinit(self: *@This()) void {
-        _ = self;
         rl.closeWindow();
+        self.physics_world.destroy();
+        self.bodies.deinit(self.alloc);
     }
 };
 
