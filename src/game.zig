@@ -26,10 +26,10 @@ pub const GameState = struct {
         play,
     } = .play,
     camera: rl.Camera2D,
+    left_over_time: f32 = 0,
 
     pub fn init(alloc: std.mem.Allocator) !GameState {
         rl.initWindow(window_size[0], window_size[1], "Angry");
-        rl.setTargetFPS(60);
         var def = box2d.World.defaultDef();
         def.gravity = .{ .y = gravity, .x = 0 };
         const world = box2d.World.create(&def);
@@ -135,11 +135,18 @@ fn updatePhysics(state: *GameState) void {
             addCircle(state, start, vec, .dinamic);
         }
     }
+    var frame_time = rl.getFrameTime() + state.left_over_time;
 
-    state.physics_world.step(
-        rl.getFrameTime(),
-        5,
-    );
+    const step_time: f32 = 1.0 / 1000.0;
+
+    while (frame_time > step_time) : (frame_time -= step_time) {
+        state.physics_world.step(
+            step_time,
+            5,
+        );
+    }
+
+    state.left_over_time = frame_time;
 
     _ = mouse_shift(state);
 }
@@ -148,7 +155,6 @@ pub export fn gameTick(state: *GameState) callconv(.C) Action {
     if (rl.windowShouldClose()) {
         return .exit;
     }
-    std.log.debug("Game tick", .{});
     if (rl.isKeyPressed(.key_space)) {
         state.state = switch (state.state) {
             .pause => .play,
@@ -156,6 +162,10 @@ pub export fn gameTick(state: *GameState) callconv(.C) Action {
         };
 
         std.log.debug("state changed: {s}", .{@tagName(state.state)});
+    }
+
+    if (rl.isKeyPressed(rl.KeyboardKey.key_r)) {
+        return .restart;
     }
 
     // update physics
@@ -204,9 +214,6 @@ pub export fn gameTick(state: *GameState) callconv(.C) Action {
     }
 
     rl.endDrawing();
-    if (rl.isKeyPressed(rl.KeyboardKey.key_r)) {
-        return .restart;
-    }
     return .none;
 }
 
