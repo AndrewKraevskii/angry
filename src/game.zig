@@ -149,9 +149,7 @@ pub export fn gameTick(state: *GameState) callconv(.C) Action {
             .play => .pause,
         };
 
-        std.log.debug("state changed: {any}", .{
-            state.state,
-        });
+        std.log.debug("state changed: {s}", .{@tagName(state.state)});
     }
 
     // update physics

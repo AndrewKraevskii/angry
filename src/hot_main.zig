@@ -22,6 +22,7 @@ fn compileShared(num: u32) !void {
         "zig",
         "build",
         "-Dgame_only=true",
+        "-Dhot_reload=true",
         name,
     };
 
