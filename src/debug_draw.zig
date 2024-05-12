@@ -57,8 +57,9 @@ pub const DebugDraw = extern struct {
 };
 
 fn DrawPolygon(vertices: [*]box2d.c.b2Vec2, vertexCount: c_int, color: b2HexColor, context: *anyopaque) callconv(.C) void {
-    std.debug.assert(vertexCount <= box2d.c.b2_maxPolygonVertices);
     _ = context;
+    std.debug.assert(vertexCount <= box2d.c.b2_maxPolygonVertices);
+
     var buf: [box2d.c.b2_maxPolygonVertices + 1]box2d.c.b2Vec2 = undefined;
     @memcpy(buf[0..@intCast(vertexCount)], vertices);
     buf[@intCast(vertexCount)] = buf[0];

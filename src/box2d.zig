@@ -3,6 +3,7 @@ pub const DebugDraw = @import("debug_draw.zig").DebugDraw;
 pub const c = @cImport({
     @cInclude("box2d/box2d.h");
     @cInclude("box2d/color.h");
+    @cInclude("box2d/hull.h");
 });
 
 pub const Timer = struct {
@@ -246,7 +247,7 @@ pub const Body = struct {
     id: c.b2BodyId,
 
     pub fn destroy(self: *Body) void {
-        c.b2World_DestroyBody(self.id);
+        c.b2DestroyBody(self.id);
     }
 
     pub fn defaultDef() c.b2BodyDef {
@@ -393,6 +394,14 @@ pub const Polygon = struct {
         };
     }
 };
+
+// pub const Hull = struct {
+//     hull: c.b2Hull,
+
+//     pub fn computeHull(points: []const c.b2Vec2) Hull {
+//         return c.b2ComputeHull(points.ptr, points.len);
+//     }
+// };
 
 pub const Type = enum(c_uint) {
     _,
