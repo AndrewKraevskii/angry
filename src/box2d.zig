@@ -2,6 +2,7 @@ const std = @import("std");
 pub const DebugDraw = @import("debug_draw.zig").DebugDraw;
 pub const c = @cImport({
     @cInclude("box2d/box2d.h");
+    @cInclude("box2d/color.h");
 });
 
 pub const Timer = struct {
