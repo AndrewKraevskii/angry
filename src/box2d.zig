@@ -125,10 +125,6 @@ pub const World = struct {
     pub fn getProfile(self: World) c.struct_b2Profile {
         return c.b2World_GetProfile(self.id);
     }
-
-    pub fn getStatistics(self: World) c.struct_b2Statistics {
-        return c.b2World_GetStatistics(self.id);
-    }
 };
 
 pub const Joint = struct {

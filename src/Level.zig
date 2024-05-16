@@ -1,21 +1,21 @@
 const std = @import("std");
 
 objects: []Object,
-pub const Vector2 = struct { x: f32, y: f32 };
+pub const Vec2 = @import("./math.zig").Vec2;
 
 pub const Object = union(enum) {
     circle: struct {
-        center: Vector2,
+        center: Vec2,
         radius: f32,
     },
     polygon: Polygon,
 
     pub const Polygon = struct {
-        vertices: [8]Vector2,
-        centroid: Vector2,
+        vertices: [8]Vec2,
+        centroid: Vec2,
         count: i32,
         radius: f32,
-        position: Vector2,
+        position: Vec2,
     };
 };
 

@@ -99,23 +99,39 @@ pub fn main() !void {
     state.deinit();
 }
 
-// TODO: better name
-fn update() !void {
-    var watcher = try Watcher.init();
-    errdefer watcher.deinit();
-    const dir = try std.fs.cwd().openDir("src", .{
-        .iterate = true,
-    });
-
+fn add_directory(watcher: *Watcher, dir: std.fs.Dir, dir_path: []const u8) !void {
     var iterator = dir.iterate();
     while (try iterator.next()) |file| {
         if (file.kind == .file) {
             std.log.debug("listen to file: {s}", .{file.name});
             var buf: [std.os.linux.PATH_MAX]u8 = undefined;
-            const path = try std.fmt.bufPrint(&buf, "src/{s}", .{file.name});
+            const path = try std.fmt.bufPrint(&buf, "{s}/{s}", .{ dir_path, file.name });
             try watcher.addFile(path);
+        } else if (file.kind == .directory) {
+            const nested_dir = try dir.openDir(file.name, .{
+                .iterate = true,
+            });
+            var buf: [std.os.linux.PATH_MAX]u8 = undefined;
+            const path = try std.fmt.bufPrint(&buf, "{s}/{s}", .{ dir_path, file.name });
+            try add_directory(
+                watcher,
+                nested_dir,
+                path,
+            );
         }
     }
+}
+
+// TODO: better name
+fn update() !void {
+    var watcher = try Watcher.init();
+    errdefer watcher.deinit();
+
+    const dir = try std.fs.cwd().openDir("src", .{
+        .iterate = true,
+    });
+    try add_directory(&watcher, dir, "src");
+
     var i: usize = 1;
     while (true) : (i += 1) {
         try watcher.listen();

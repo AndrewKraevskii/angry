@@ -19,7 +19,7 @@ fn build_hot_reload(b: *std.Build, target: std.Build.ResolvedTarget, optimize: s
     const lib_name = b.option([]const u8, "lib_name", "name to use when building shared") orelse "game";
     const shared_lib = b.addSharedLibrary(.{
         .name = lib_name,
-        .root_source_file = b.path("src/game.zig"),
+        .root_source_file = b.path("src/hot_game.zig"),
         .target = target,
         .optimize = optimize,
     });

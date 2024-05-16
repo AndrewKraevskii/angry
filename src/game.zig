@@ -31,10 +31,26 @@ pub const GameState = struct {
     physics_world: box2d.World,
     bodies: std.ArrayListUnmanaged(box2d.Body),
     mouse_pressed: ?rl.Vector2 = null,
-    state: enum {
+    pause_state: enum {
         pause,
         play,
+        fn toggle(self: *@This()) void {
+            self.* = switch (self.*) {
+                .pause => .play,
+                .play => .pause,
+            };
+        }
     } = .play,
+    state: enum {
+        game,
+        editor,
+        fn toggle(self: *@This()) void {
+            self.* = switch (self.*) {
+                .game => .editor,
+                .editor => .game,
+            };
+        }
+    } = .game,
     camera: rl.Camera2D,
     left_over_time: f32 = 0,
 
@@ -135,24 +151,8 @@ fn addCircle(
 }
 
 fn updatePhysics(state: *GameState) void {
-
-    // Spawn balls
-    if (rl.isMouseButtonReleased(.mouse_button_left)) {
-        if (state.mouse_pressed) |start| {
-            const vec = calculate_speed(start, rl.getMousePosition());
-            addCircle(state, start, vec, .kinematic);
-        }
-    }
-    if (rl.isMouseButtonReleased(.mouse_button_right)) {
-        if (state.mouse_pressed) |start| {
-            const vec = calculate_speed(start, rl.getMousePosition());
-            addCircle(state, start, vec, .dinamic);
-        }
-    }
     var frame_time = rl.getFrameTime() + state.left_over_time;
-
     const step_time: f32 = 1.0 / 1000.0;
-
     while (frame_time > step_time) : (frame_time -= step_time) {
         state.physics_world.step(
             step_time,
@@ -161,8 +161,6 @@ fn updatePhysics(state: *GameState) void {
     }
 
     state.left_over_time = frame_time;
-
-    _ = mouse_shift(state);
 }
 
 fn save(state: *GameState) !void {
@@ -204,7 +202,7 @@ fn save(state: *GameState) !void {
                 },
                 box2d.c.b2_polygonShape => {
                     const polygon = box2d.c.b2Shape_GetPolygon(shape);
-                    var vertices: [8]Level.Vector2 = undefined;
+                    var vertices: [8]Level.Vec2 = undefined;
                     const vertex_count: usize = @intCast(polygon.count);
                     for (vertices[0..vertex_count], polygon.vertices[0..vertex_count]) |*vt, vf| {
                         vt.* = .{ .x = vf.x, .y = vf.y };
@@ -223,13 +221,6 @@ fn save(state: *GameState) !void {
                 },
             }
         }
-
-        // const pos = body.getPosition();
-        // _ = pos; // autofix
-        // object.* = .{ .circle = .{
-        //     .center = .{ .x = pos.x, .y = pos.y },
-        //     .radius = 10,
-        // } };
     }
     try level.save_to_file(path);
 }
@@ -286,91 +277,126 @@ fn load(state: *GameState) !void {
     }
 }
 
-pub export fn gameTick(state: *GameState) callconv(.C) Action {
-    if (!state.arena.reset(.retain_capacity)) {
-        std.log.err("Arena realloc faled", .{});
+fn gameInput(state: *GameState) void {
+    if (rl.isMouseButtonReleased(.mouse_button_left)) {
+        if (state.mouse_pressed) |start| {
+            const vec = calculate_speed(start, rl.getMousePosition());
+            addCircle(state, start, vec, .kinematic);
+        }
     }
-    if (rl.windowShouldClose()) {
-        return .exit;
+    if (rl.isMouseButtonReleased(.mouse_button_right)) {
+        if (state.mouse_pressed) |start| {
+            const vec = calculate_speed(start, rl.getMousePosition());
+            addCircle(state, start, vec, .dinamic);
+        }
+    }
+    _ = mouse_shift(state);
+}
+
+fn generalInput(state: *GameState) void {
+    if (rl.isKeyPressed(.key_e)) {
+        state.state.toggle();
     }
     if (rl.isKeyPressed(.key_space)) {
-        state.state = switch (state.state) {
-            .pause => .play,
-            .play => .pause,
-        };
-
-        std.log.debug("state changed: {s}", .{@tagName(state.state)});
+        state.pause_state.toggle();
+        std.log.debug("state changed: {s}", .{@tagName(state.pause_state)});
     }
-    if (rl.isKeyPressed(.key_s)) saving: {
-        {
-            const time = std.time.Instant.now() catch return .exit;
-            std.log.info("Saving to file: {s}", .{"./level.json"});
-            save(state) catch |err| {
-                std.log.err("Failed to save file with error: {s}", .{@errorName(err)});
-                break :saving;
-            };
-            const delta = (std.time.Instant.now() catch return .exit).since(time);
-            std.log.info("Saved... It took {d}s", .{frac(delta, std.time.ns_per_s)});
-        }
-        {
-            const time = std.time.Instant.now() catch return .exit;
-            std.log.info("Loading from file: {s}", .{"./level.json"});
-            load(state) catch |err| {
-                std.log.err("Failed to load from file with error: {s}", .{@errorName(err)});
-                break :saving;
-            };
-            const delta = (std.time.Instant.now() catch return .exit).since(time);
-            std.log.info("Loaded... It took {d}s", .{frac(delta, std.time.ns_per_s)});
-        }
+    // if (rl.isKeyPressed(.key_s)) saving: {
+    //     {
+    //         const time = std.time.Instant.now() catch return .exit;
+    //         std.log.info("Saving to file: {s}", .{"./level.json"});
+    //         save(state) catch |err| {
+    //             std.log.err("Failed to save file with error: {s}", .{@errorName(err)});
+    //             break :saving;
+    //         };
+    //         const delta = (std.time.Instant.now() catch return .exit).since(time);
+    //         std.log.info("Saved... It took {d}s", .{frac(delta, std.time.ns_per_s)});
+    //     }
+    //     {
+    //         const time = std.time.Instant.now() catch return .exit;
+    //         std.log.info("Loading from file: {s}", .{"./level.json"});
+    //         load(state) catch |err| {
+    //             std.log.err("Failed to load from file with error: {s}", .{@errorName(err)});
+    //             break :saving;
+    //         };
+    //         const delta = (std.time.Instant.now() catch return .exit).since(time);
+    //         std.log.info("Loaded... It took {d}s", .{frac(delta, std.time.ns_per_s)});
+    //     }
+    // }
+}
+
+pub fn gameTick(state: *GameState) !Action {
+    if (!state.arena.reset(.retain_capacity)) {
+        std.log.err("Arena realloc faled", .{});
     }
 
     if (rl.isKeyPressed(rl.KeyboardKey.key_r)) {
         return .restart;
     }
+    if (rl.windowShouldClose()) {
+        return .exit;
+    }
+    const button = @import("./ui/button.zig").button;
 
+    generalInput(state);
     // update physics
-    if (state.state == .play) {
+    if (state.pause_state == .play) {
+        gameInput(state);
         updatePhysics(state);
     }
+
     // draw screen
+
     rl.beginDrawing();
+    // rl.clearBackground(@bitCast(gui.GetColor(@intCast(gui.GuiGetStyle(gui.DEFAULT, gui.BACKGROUND_COLOR)))));
     rl.clearBackground(rl.Color.dark_gray);
-    {
-        if (state.mouse_pressed) |start| {
-            rl.drawCircle(@intFromFloat(start.x), @intFromFloat(start.y), 10, rl.Color.orange);
-            draw_trace(start, rl.getMousePosition());
-            rl.drawLine(
-                @intFromFloat(start.x),
-                @intFromFloat(start.y),
-                rl.getMouseX(),
-                rl.getMouseY(),
-                rl.Color.green,
-            );
+
+    if (state.state != .editor) {
+        {
+            if (state.mouse_pressed) |start| {
+                rl.drawCircle(@intFromFloat(start.x), @intFromFloat(start.y), 10, rl.Color.orange);
+                draw_trace(start, rl.getMousePosition());
+                rl.drawLine(
+                    @intFromFloat(start.x),
+                    @intFromFloat(start.y),
+                    rl.getMouseX(),
+                    rl.getMouseY(),
+                    rl.Color.green,
+                );
+            }
+
+            var buf: [100]u8 = undefined;
+            const number_of_balls = std.fmt.bufPrintZ(&buf, "balls: {d}", .{state.bodies.items.len}) catch "Error :(";
+            rl.drawText(number_of_balls, 0, 100, 30, rl.Color.white);
+
+            var draw = DebugDraw{};
+            state.physics_world.draw(&draw);
+            rl.drawFPS(0, 0);
         }
 
-        var buf: [100]u8 = undefined;
-        const number_of_balls = std.fmt.bufPrintZ(&buf, "balls: {d}", .{state.bodies.items.len}) catch "Error :(";
-        rl.drawText(number_of_balls, 0, 100, 30, rl.Color.white);
-
+        if (state.pause_state == .pause) {
+            rl.beginBlendMode(@intFromEnum(rl.BlendMode.blend_multiplied));
+            rl.drawRectangle(0, 0, window_size[0], window_size[1], .{
+                .r = 100,
+                .g = 100,
+                .b = 100,
+                .a = 255,
+            });
+            rl.endBlendMode();
+            {
+                const font = 40;
+                const size = rl.measureText("Paused", font);
+                rl.drawText("Paused", @divFloor(window_size[0] - size, 2), window_size[1] / 2, font, rl.Color.white);
+            }
+        }
+    } else {
         var draw = DebugDraw{};
         state.physics_world.draw(&draw);
         rl.drawFPS(0, 0);
     }
-
-    if (state.state == .pause) {
-        rl.beginBlendMode(@intFromEnum(rl.BlendMode.blend_multiplied));
-        rl.drawRectangle(0, 0, window_size[0], window_size[1], .{
-            .r = 100,
-            .g = 100,
-            .b = 100,
-            .a = 255,
-        });
-        rl.endBlendMode();
-        {
-            const font = 40;
-            const size = rl.measureText("Paused", font);
-            rl.drawText("Paused", @divFloor(window_size[0] - size, 2), window_size[1] / 2, font, rl.Color.white);
-        }
+    if (button(.{ .x = 100, .y = 100 }, "Pause", .{ .font_size = 20 }) == .pressed) {
+        state.pause_state.toggle();
+        std.log.debug("button pressed", .{});
     }
 
     rl.endDrawing();

@@ -13,28 +13,16 @@ pub fn main() !void {
     std.log.info("Game initialized", .{});
 
     while (true) {
-        switch (gameTick(&state)) {
+        switch (gameTick(&state) catch |err| {
+            std.log.err("{s}", .{@errorName(err)});
+        }) {
             .none => {},
-            .exit => break,
-            .restart => {
+            .exit => {
+                std.log.info("Exiting", .{});
                 break;
             },
-        }
-    }
-    std.log.info("Closing game", .{});
-    state.deinit();
-}
-test "main" {
-    const alloc = std.heap.c_allocator;
-
-    var state = try GameState.init(alloc);
-    std.log.info("Game initialized", .{});
-
-    while (true) {
-        switch (gameTick(&state)) {
-            .none => {},
-            .exit => break,
             .restart => {
+                std.log.info("Tried to restart but it is not hot reloaded", .{});
                 break;
             },
         }
