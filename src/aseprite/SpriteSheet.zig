@@ -42,6 +42,7 @@ pub const JsonBounds = struct {
 };
 
 pub const Bounds = rl.Rectangle;
+
 fn loadSlice(alloc: std.mem.Allocator, path: []const u8) !std.StringHashMapUnmanaged(Bounds) {
     const json_path = try std.fmt.allocPrintZ(
         alloc,

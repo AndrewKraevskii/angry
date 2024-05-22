@@ -21,6 +21,7 @@ const State = enum {
     hovered,
 };
 
+// TODO: when button pressed click shound be processed by the rest of the game.
 pub fn button(pos: rl.Vector2, text: []const u8, config: ButtonConfig) State {
     var buffer: [max_test_size]u8 = undefined;
 

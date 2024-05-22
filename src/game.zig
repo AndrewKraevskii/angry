@@ -52,6 +52,7 @@ pub const GameState = struct {
             };
         }
     } = .game,
+    debug_draw: bool = true,
     camera: rl.Camera2D,
     left_over_time: f32 = 0,
     atlas: SpriteSheet,
@@ -373,8 +374,53 @@ pub fn gameTick(state: *GameState) !Action {
             const number_of_balls = std.fmt.bufPrintZ(&buf, "balls: {d}", .{state.bodies.items.len}) catch "Error :(";
             rl.drawText(number_of_balls, 0, 100, 30, rl.Color.white);
 
-            var draw = DebugDraw{};
-            state.physics_world.draw(&draw);
+            if (state.debug_draw) {
+                var debug_draw_struct: DebugDraw = .{};
+                state.physics_world.draw(&debug_draw_struct);
+            }
+
+            for (state.bodies.items) |item| {
+                switch (item.getType()) {
+                    .dynamic_body => {
+                        const position = item.getPosition();
+                        const bird_slice = state.atlas.mapping.get("bird") orelse unreachable;
+                        rl.drawTexturePro(
+                            state.atlas.atlas,
+                            bird_slice,
+                            .{
+                                .x = position.x,
+                                .y = position.y,
+                                .width = 30 * 2,
+                                .height = 30 * 2,
+                            },
+                            .{ .x = 30, .y = 30 },
+                            item.getAngle() * std.math.deg_per_rad,
+                            rl.Color.white,
+                        );
+                    },
+                    .kinematic_body => {
+                        const position = item.getPosition();
+                        const bird_slice = state.atlas.mapping.get("wood") orelse unreachable;
+                        var shapes: [1]box2d.Shape = undefined;
+                        std.debug.assert(1 == item.getShapes(&shapes));
+
+                        rl.drawTexturePro(
+                            state.atlas.atlas,
+                            bird_slice,
+                            .{
+                                .x = position.x,
+                                .y = position.y,
+                                .width = 30 * 2,
+                                .height = 30 * 2,
+                            },
+                            .{ .x = 30, .y = 30 },
+                            item.getAngle() * std.math.deg_per_rad,
+                            rl.Color.white,
+                        );
+                    },
+                    else => {},
+                }
+            }
             rl.drawFPS(0, 0);
         }
 
@@ -398,8 +444,12 @@ pub fn gameTick(state: *GameState) !Action {
         state.physics_world.draw(&draw);
         rl.drawFPS(0, 0);
     }
-    if (button(.{ .x = 100, .y = 100 }, "Pause", .{ .font_size = 20 }) == .pressed) {
+    if (button(.{ .x = 1000, .y = 100 }, "Pause", .{ .font_size = 20 }) == .pressed) {
         state.pause_state.toggle();
+        std.log.debug("button pressed", .{});
+    }
+    if (button(.{ .x = 1200, .y = 100 }, "Debug", .{ .font_size = 20 }) == .pressed) {
+        state.debug_draw = !state.debug_draw;
         std.log.debug("button pressed", .{});
     }
 

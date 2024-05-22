@@ -180,7 +180,6 @@ fn linkWithBox2d(
     }) |file| {
         lib.addCSourceFile(.{
             .file = box2c.path(b.pathJoin(&.{ "src", file })),
-            .flags = &.{},
         });
     }
 }
