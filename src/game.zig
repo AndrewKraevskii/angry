@@ -6,6 +6,7 @@ const box2rlColor = @import("utils.zig").box2rlColor;
 const frac = @import("utils.zig").frac;
 const DebugDraw = @import("debug_draw.zig").DebugDraw;
 const box2d = @import("box2d.zig");
+const SpriteSheet = @import("./aseprite/SpriteSheet.zig");
 
 pub const Ball = struct {
     color: rl.Color,
@@ -53,6 +54,7 @@ pub const GameState = struct {
     } = .game,
     camera: rl.Camera2D,
     left_over_time: f32 = 0,
+    atlas: SpriteSheet,
 
     pub fn init(gpa: std.mem.Allocator) !GameState {
         rl.initWindow(window_size[0], window_size[1], "Angry");
@@ -70,12 +72,14 @@ pub const GameState = struct {
                 .rotation = 0,
                 .zoom = 0,
             },
+            .atlas = try SpriteSheet.loadSpriteSheet(gpa, "res/atlas"),
         };
 
         createBox(&state);
         return state;
     }
     pub fn deinit(self: *@This()) void {
+        self.atlas.deinit();
         rl.closeWindow();
         self.physics_world.destroy();
         self.bodies.deinit(self.gpa);

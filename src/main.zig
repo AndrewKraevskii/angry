@@ -3,6 +3,7 @@ const std = @import("std");
 const GameState = @import("game.zig").GameState;
 const Action = @import("game.zig").Action;
 const gameTick = @import("game.zig").gameTick;
+const sheet = @import("aseprite/SpriteSheet.zig");
 
 pub const window_size = .{ 1280, 720 };
 
@@ -32,6 +33,7 @@ pub fn main() !void {
 }
 
 test {
-    @setEvalBranchQuota(100000000);
-    std.testing.refAllDecls(@This());
+    @setEvalBranchQuota(1000);
+    _ = sheet;
+    std.testing.refAllDeclsRecursive(@This());
 }
