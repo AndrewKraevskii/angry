@@ -30,3 +30,8 @@ pub fn main() !void {
     std.log.info("Closing game", .{});
     state.deinit();
 }
+
+test {
+    @setEvalBranchQuota(100000000);
+    std.testing.refAllDecls(@This());
+}

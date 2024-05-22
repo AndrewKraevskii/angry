@@ -6,30 +6,6 @@ pub const c = @cImport({
     @cInclude("box2d/hull.h");
 });
 
-pub const Timer = struct {
-    id: c.b2Timer,
-
-    pub fn create() Timer {
-        return .{ .id = c.b2CreateTimer() };
-    }
-
-    pub fn getTicks(self: *Timer) i64 {
-        return c.b2GetTicks(&self.id);
-    }
-
-    pub fn getMilliseconds(self: *Timer) f32 {
-        return c.b2GetMilliseconds(&self.id);
-    }
-
-    pub fn getMillisecondsAndReset(self: *Timer) f32 {
-        return c.b2GetMillisecondsAndReset(&self.id);
-    }
-};
-
-pub fn sleepMilliseconds(ms: f32) void {
-    c.b2SleepMilliseconds(ms);
-}
-
 pub const World = struct {
     id: c.b2WorldId,
 
@@ -62,46 +38,6 @@ pub const World = struct {
         };
     }
 
-    pub fn createDistanceJoint(self: World, def: c.b2DistanceJointDef) DistanceJoint {
-        return .{
-            .joint = .{
-                .id = c.b2World_CreateDistanceJoint(self.id, &def),
-            },
-        };
-    }
-
-    pub fn createMouseJoint(self: World, def: c.b2MouseJointDef) MouseJoint {
-        return .{
-            .joint = .{
-                .id = c.b2World_CreateMouseJoint(self.id, &def),
-            },
-        };
-    }
-
-    pub fn createPrismaticJoint(self: World, def: c.b2PrismaticJointDef) Joint {
-        return .{
-            .id = c.b2World_CreatePrismaticJoint(self.id, &def),
-        };
-    }
-
-    pub fn createRevoluteJoint(self: World, def: c.b2RevoluteJointDef) RevoluteJoint {
-        return .{
-            .joint = .{
-                .id = c.b2World_CreateRevoluteJoint(self.id, &def),
-            },
-        };
-    }
-
-    pub fn createWeldJoint(self: World, def: c.b2WeldJointDef) Joint {
-        return .{
-            .id = c.b2World_CreateWeldJoint(self.id, &def),
-        };
-    }
-
-    pub fn queryAABB(self: World, aabb: c.b2AABB, fcn: c.b2QueryCallbackFcn, context: ?*anyopaque) void {
-        c.b2World_QueryAABB(self.id, aabb, fcn, context);
-    }
-
     pub fn enableSleeping(self: World, flag: bool) void {
         c.b2World_EnableSleeping(self.id, flag);
     }
@@ -124,118 +60,6 @@ pub const World = struct {
 
     pub fn getProfile(self: World) c.struct_b2Profile {
         return c.b2World_GetProfile(self.id);
-    }
-};
-
-pub const Joint = struct {
-    id: c.b2JointId,
-
-    pub fn destroy(self: *Joint) void {
-        c.b2World_DestroyJoint(self.id);
-    }
-
-    pub fn getBodyA(self: Joint) Body {
-        return .{
-            .id = c.b2Joint_GetBodyA(self.id),
-        };
-    }
-
-    pub fn getBodyB(self: Joint) Body {
-        return .{
-            .id = c.b2Joint_GetBodyB(self.id),
-        };
-    }
-};
-
-pub const DistanceJoint = struct {
-    joint: Joint,
-
-    pub fn destroy(self: *DistanceJoint) void {
-        self.joint.destroy();
-    }
-
-    pub fn getBodyA(self: DistanceJoint) Body {
-        return self.joint.getBodyA();
-    }
-
-    pub fn getBodyB(self: DistanceJoint) Body {
-        return self.joint.getBodyB();
-    }
-
-    pub fn getConstraintForce(self: DistanceJoint, timeStep: f32) f32 {
-        return c.b2DistanceJoint_GetConstraintForce(self.joint.id, timeStep);
-    }
-
-    pub fn setLength(self: DistanceJoint, length: f32, minLength: f32, maxLength: f32) void {
-        c.b2DistanceJoint_SetLength(self.joint.id, length, minLength, maxLength);
-    }
-
-    pub fn getCurrentLength(self: DistanceJoint) f32 {
-        return c.b2DistanceJoint_GetCurrentLength(self.joint.id);
-    }
-
-    pub fn setTuning(self: DistanceJoint, hertz: f32, dampingRatio: f32) void {
-        c.b2DistanceJoint_SetTuning(self.joint.id, hertz, dampingRatio);
-    }
-};
-
-pub const MouseJoint = struct {
-    joint: Joint,
-
-    pub fn destroy(self: *DistanceJoint) void {
-        self.joint.destroy();
-    }
-
-    pub fn getBodyA(self: DistanceJoint) Body {
-        return self.joint.getBodyA();
-    }
-
-    pub fn getBodyB(self: DistanceJoint) Body {
-        return self.joint.getBodyB();
-    }
-
-    pub fn setTarget(self: DistanceJoint, target: c.b2Vec2) void {
-        c.b2MouseJoint_SetTarget(self.joint.id, target);
-    }
-};
-
-pub const RevoluteJoint = struct {
-    joint: Joint,
-
-    pub fn destroy(self: *RevoluteJoint) void {
-        self.joint.destroy();
-    }
-
-    pub fn getBodyA(self: RevoluteJoint) Body {
-        return self.joint.getBodyA();
-    }
-
-    pub fn getBodyB(self: RevoluteJoint) Body {
-        return self.joint.getBodyB();
-    }
-
-    pub fn enableLimit(self: RevoluteJoint, enable: bool) void {
-        c.b2RevoluteJoint_EnableLimit(self.joint.id, enable);
-    }
-
-    pub fn enableMotor(self: RevoluteJoint, enable: bool) void {
-        c.b2RevoluteJoint_EnableMotor(self.joint.id, enable);
-    }
-
-    pub fn setMotorSpeed(self: RevoluteJoint, speed: f32) void {
-        c.b2RevoluteJoint_SetMotorSpeed(self.joint.id, speed);
-    }
-
-    pub fn getMotorTorque(self: RevoluteJoint, inverseTimeStep: f32) f32 {
-        return c.b2RevoluteJoint_GetMotorTorque(self.joint.id, inverseTimeStep);
-    }
-
-    pub fn setMaxMotorTorque(self: RevoluteJoint, torque: f32) void {
-        c.b2RevoluteJoint_SetMaxMotorTorque(self.joint.id, torque);
-    }
-
-    pub fn getConstraintForce(self: RevoluteJoint) c.b2Vec2 {
-        return c.b2RevoluteJoint_GetConstraintForce(self.joint.id);
     }
 };
 
@@ -310,16 +134,12 @@ pub const Body = struct {
         return c.b2Body_GetWorldCenterOfMass(self.id);
     }
 
-    pub fn setMassData(massData: c.b2MassData) void {
-        c.b2Body_SetMassData(massData);
+    pub fn getShapes(self: Body, shapes: []Shape) usize {
+        return @intCast(c.b2Body_GetShapes(self.id, @ptrCast(shapes.ptr), @intCast(shapes.len)));
     }
 
-    pub fn isAwake(self: Body) void {
+    pub fn isAwake(self: Body) bool {
         return c.b2Body_IsAwake(self.id);
-    }
-
-    pub fn wake(self: Body) void {
-        c.b2Body_Wake(self.id);
     }
 
     pub fn isEnabled(self: Body) bool {
@@ -340,18 +160,6 @@ pub const Body = struct {
         };
     }
 
-    pub fn createSegment(self: Body, def: c.b2ShapeDef, segment: c.b2Segment) Shape {
-        return .{
-            .id = c.b2Body_CreateSegment(self.id, &def, &segment),
-        };
-    }
-
-    pub fn createCapsule(self: Body, def: c.b2ShapeDef, capsule: c.b2Capsule) Shape {
-        return .{
-            .id = c.b2Body_CreateCapsule(self.id, &def, &capsule),
-        };
-    }
-
     pub fn createPolygon(self: Body, def: *c.b2ShapeDef, polygon: Polygon) Shape {
         return .{
             .id = c.b2CreatePolygonShape(self.id, def, &polygon.polygon),
@@ -361,6 +169,14 @@ pub const Body = struct {
 
 pub const Shape = struct {
     id: c.b2ShapeId,
+
+    pub const ShapeType = enum(u32) {
+        circle_shape = 0,
+        capsule_shape = 1,
+        segment_shape = 2,
+        polygon_shape = 3,
+        smooth_segment_shape = 4,
+    };
 
     pub fn defaultDef() c.b2ShapeDef {
         return c.b2DefaultShapeDef();
@@ -379,6 +195,14 @@ pub const Shape = struct {
     pub fn setFriction(self: Shape, friction: f32) void {
         c.b2Shape_SetFriction(self.id, friction);
     }
+
+    pub fn getType(self: Shape) ShapeType {
+        return @enumFromInt(c.b2Shape_GetType(self.id));
+    }
+
+    pub fn getPolygon(self: Shape) Polygon {
+        return .{ .polygon = c.b2Shape_GetPolygon(self.id) };
+    }
 };
 
 pub const Polygon = struct {
@@ -391,16 +215,10 @@ pub const Polygon = struct {
     }
 };
 
-// pub const Hull = struct {
-//     hull: c.b2Hull,
-
-//     pub fn computeHull(points: []const c.b2Vec2) Hull {
-//         return c.b2ComputeHull(points.ptr, points.len);
-//     }
-// };
-
-pub const Type = enum(c_uint) {
-    _,
+pub const Type = enum(u32) {
+    static_body = 0,
+    kinematic_body = 1,
+    dynamic_body = 2,
 };
 
 test World {
@@ -436,9 +254,8 @@ test World {
     for (0..60) |_| {
         const timeStep = 1.0 / 60.0;
         const velocityIterations = 6;
-        const relaxIterations = 2;
 
-        world.step(timeStep, velocityIterations, relaxIterations);
+        world.step(timeStep, velocityIterations);
     }
 
     const position = body.getPosition();
@@ -449,8 +266,4 @@ test World {
     try std.testing.expect(@abs(angle) < 0.01);
 
     world.destroy();
-}
-
-test {
-    std.testing.refAllDeclsRecursive(@This());
 }

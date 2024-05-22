@@ -106,6 +106,25 @@ fn build_plain(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     run_cmd.step.dependOn(b.getInstallStep());
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
+
+    const testing = b.addTest(.{
+        .name = "angry-test",
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    testing.linkLibrary(raylib_artifact);
+    testing.root_module.addImport("raylib", raylib);
+    testing.root_module.addImport("raylib-math", raylib_math);
+
+    testing.linkLibC();
+    linkWithBox2d(b, testing);
+
+    b.installArtifact(exe);
+
+    const test_step = b.step("test", "Run tests");
+    const run_test = b.addRunArtifact(testing);
+    test_step.dependOn(&run_test.step);
 }
 
 fn linkWithBox2d(
