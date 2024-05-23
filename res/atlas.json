@@ -19,11 +19,16 @@
   "frameTags": [
   ],
   "layers": [
-   { "name": "Layer", "opacity": 255, "blendMode": "normal" }
+   { "name": "pig", "opacity": 255, "blendMode": "normal" },
+   { "name": "block", "opacity": 255, "blendMode": "normal" },
+   { "name": "bird", "opacity": 255, "blendMode": "normal" },
+   { "name": "grass", "opacity": 255, "blendMode": "normal" }
   ],
   "slices": [
-   { "name": "wood", "color": "#0000ffff", "keys": [{ "frame": 0, "bounds": {"x": 0, "y": 0, "w": 16, "h": 48 } }] },
-   { "name": "bird", "color": "#0000ffff", "data": "asdf", "keys": [{ "frame": 0, "bounds": {"x": 16, "y": 0, "w": 16, "h": 16 } }] }
+   { "name": "pig", "color": "#0000ffff", "keys": [{ "frame": 0, "bounds": {"x": 16, "y": 0, "w": 16, "h": 16 } }] },
+   { "name": "bird", "color": "#0000ffff", "data": "asdf", "keys": [{ "frame": 0, "bounds": {"x": 0, "y": 0, "w": 16, "h": 16 } }] },
+   { "name": "grass", "color": "#0000ffff", "keys": [{ "frame": 0, "bounds": {"x": 0, "y": 112, "w": 96, "h": 144 } }] },
+   { "name": "block", "color": "#0000ffff", "keys": [{ "frame": 0, "bounds": {"x": 48, "y": 0, "w": 16, "h": 32 } }] }
   ]
  }
 }

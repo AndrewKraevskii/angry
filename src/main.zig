@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const GameState = @import("game.zig").GameState;
+const Game = @import("game.zig").Game;
 const Action = @import("game.zig").Action;
 const gameTick = @import("game.zig").gameTick;
 const sheet = @import("aseprite/SpriteSheet.zig");
@@ -10,7 +10,7 @@ pub const window_size = .{ 1280, 720 };
 pub fn main() !void {
     const alloc = std.heap.c_allocator;
 
-    var state = try GameState.init(alloc);
+    var state = try Game.init(alloc);
     std.log.info("Game initialized", .{});
 
     while (true) {

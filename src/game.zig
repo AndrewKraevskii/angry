@@ -7,59 +7,68 @@ const frac = @import("utils.zig").frac;
 const DebugDraw = @import("debug_draw.zig").DebugDraw;
 const box2d = @import("box2d.zig");
 const SpriteSheet = @import("./aseprite/SpriteSheet.zig");
-
-pub const Ball = struct {
-    color: rl.Color,
-    ttl: f32,
-};
+const Object = @import("Object.zig");
+const Vec2 = @import("math.zig").Vec2;
 
 pub const Block = struct {
     color: rl.Color,
 };
 
-fn getWorldDefenition() box2d.c.struct_b2WorldDef {
+fn getWorldDefinition() box2d.c.struct_b2WorldDef {
     var def = box2d.World.defaultDef();
     def.gravity = .{ .y = gravity, .x = 0 };
     return def;
 }
 
-pub const GameState = struct {
+const screen_to_sprite_pixels = 4;
+const gravity = 1000;
+const strench_scale = 5;
+
+const friction_coef = 0.01;
+
+pub const Game = struct {
     gpa: std.mem.Allocator,
 
     /// Cleared every frame
     arena: std.heap.ArenaAllocator,
 
     physics_world: box2d.World,
-    bodies: std.ArrayListUnmanaged(box2d.Body),
+    bodies: std.ArrayListUnmanaged(Object),
     mouse_pressed: ?rl.Vector2 = null,
-    pause_state: enum {
-        pause,
-        play,
-        fn toggle(self: *@This()) void {
-            self.* = switch (self.*) {
-                .pause => .play,
-                .play => .pause,
-            };
-        }
-    } = .play,
-    state: enum {
-        game,
-        editor,
-        fn toggle(self: *@This()) void {
-            self.* = switch (self.*) {
-                .game => .editor,
-                .editor => .game,
-            };
-        }
-    } = .game,
-    debug_draw: bool = true,
+    state: struct {
+        pause: enum {
+            pause,
+            play,
+            fn toggle(self: *@This()) void {
+                self.* = switch (self.*) {
+                    .pause => .play,
+                    .play => .pause,
+                };
+            }
+        },
+        editor: enum {
+            game,
+            editor,
+            fn toggle(self: *@This()) void {
+                self.* = switch (self.*) {
+                    .game => .editor,
+                    .editor => .game,
+                };
+            }
+        },
+        debug_draw: bool,
+    } = .{
+        .pause = .play,
+        .editor = .game,
+        .debug_draw = true,
+    },
     camera: rl.Camera2D,
     left_over_time: f32 = 0,
     atlas: SpriteSheet,
 
-    pub fn init(gpa: std.mem.Allocator) !GameState {
+    pub fn init(gpa: std.mem.Allocator) !Game {
         rl.initWindow(window_size[0], window_size[1], "Angry");
-        var def = getWorldDefenition();
+        var def = getWorldDefinition();
         const world = box2d.World.create(&def);
 
         var state: @This() = .{
@@ -76,13 +85,16 @@ pub const GameState = struct {
             .atlas = try SpriteSheet.loadSpriteSheet(gpa, "res/atlas"),
         };
 
-        createBox(&state);
+        createLevel(&state);
         return state;
     }
     pub fn deinit(self: *@This()) void {
         self.atlas.deinit();
         rl.closeWindow();
         self.physics_world.destroy();
+        for (self.bodies.items) |*item| {
+            item.deinit();
+        }
         self.bodies.deinit(self.gpa);
     }
 };
@@ -93,7 +105,7 @@ pub const Action = enum(u8) {
     restart,
 };
 
-fn mouse_shift(state: *GameState) void {
+fn mouse_shift(state: *Game) void {
     if (state.mouse_pressed == null and rl.isMouseButtonPressed(.mouse_button_left) or rl.isMouseButtonPressed(.mouse_button_right)) {
         state.mouse_pressed = rl.getMousePosition();
     }
@@ -102,60 +114,29 @@ fn mouse_shift(state: *GameState) void {
     }
 }
 
-const gravity = 1000;
-const strench_scale = 5;
-const ttl = 100;
-
-const friction_coef = 0.01;
-
-fn createBox(state: *GameState) void {
+fn createLevel(state: *Game) void {
     var body_def = box2d.Body.defaultDef();
     body_def.type = box2d.c.b2_kinematicBody;
     body_def.position = .{ .x = window_size[0] / 2, .y = window_size[1] - 100 };
 
     var body = state.physics_world.createBody(&body_def);
 
-    const box = box2d.Polygon.makeBox(window_size[0], 20);
+    const size = Vec2{ .x = window_size[0], .y = 20 };
+    const box = box2d.Polygon.makeBox(size.x, size.y);
     var shape_def: box2d.c.b2ShapeDef = box2d.Shape.defaultDef();
     shape_def.restitution = 0.99;
     _ = body.createPolygon(&shape_def, box);
 
-    state.bodies.append(state.gpa, body) catch {
+    state.bodies.append(state.gpa, Object.init(
+        body,
+        "grass",
+        null,
+    )) catch {
         std.log.err("Failed to arr ball", .{});
     };
 }
 
-fn addCircle(
-    state: *GameState,
-    pos: rl.Vector2,
-    speed: rl.Vector2,
-    body_type: enum {
-        dinamic,
-        kinematic,
-    },
-) void {
-    var body_def = box2d.Body.defaultDef();
-    body_def.linearVelocity = .{ .x = speed.x, .y = speed.y };
-
-    body_def.type = switch (body_type) {
-        .dinamic => box2d.c.b2_dynamicBody,
-        .kinematic => box2d.c.b2_kinematicBody,
-    };
-    body_def.position = .{ .x = pos.x, .y = pos.y };
-
-    var circle = state.physics_world.createBody(&body_def);
-    var circle_def = box2d.Shape.defaultDef();
-    circle_def.restitution = 0.99;
-    const circle_shape = circle.createCircle(circle_def, .{
-        .radius = 30,
-    });
-
-    state.bodies.append(state.gpa, circle_shape.getBody()) catch {
-        std.log.err("Failed to arr ball", .{});
-    };
-}
-
-fn updatePhysics(state: *GameState) void {
+fn updatePhysics(state: *Game) void {
     var frame_time = rl.getFrameTime() + state.left_over_time;
     const step_time: f32 = 1.0 / 1000.0;
     while (frame_time > step_time) : (frame_time -= step_time) {
@@ -168,169 +149,52 @@ fn updatePhysics(state: *GameState) void {
     state.left_over_time = frame_time;
 }
 
-fn save(state: *GameState) !void {
-    var buffer: [std.posix.HOST_NAME_MAX]u8 = undefined;
-    const path = try std.fs.path.join(state.arena.allocator(), &.{
-        try std.fs.selfExeDirPath(&buffer),
-        "level.json",
-    });
-
-    const Level = @import("Level.zig");
-
-    var level = Level{
-        .objects = try state.arena.allocator().alloc(Level.Object, state.bodies.items.len),
-    };
-
-    for (state.bodies.items, level.objects) |body, *object| {
-        const max_shapes = 16; // There is no restriction on number of shapes in box2d but in my game there is.
-        const count = box2d.c.b2Body_GetShapeCount(body.id);
-        std.debug.assert(count < max_shapes);
-        var shapes: [max_shapes]box2d.c.struct_b2ShapeId = undefined;
-        std.debug.assert(
-            count == box2d.c.b2Body_GetShapes(
-                body.id,
-                &shapes,
-                max_shapes,
-            ),
-        );
-
-        for (shapes[0..@intCast(count)]) |shape| {
-            const shape_type = box2d.c.b2Shape_GetType(shape);
-            switch (shape_type) {
-                box2d.c.b2_circleShape => {
-                    const pos = body.getPosition();
-                    const circle = box2d.c.b2Shape_GetCircle(shape);
-                    object.* = .{ .circle = .{
-                        .center = .{ .x = pos.x, .y = pos.y },
-                        .radius = circle.radius,
-                    } };
-                },
-                box2d.c.b2_polygonShape => {
-                    const polygon = box2d.c.b2Shape_GetPolygon(shape);
-                    var vertices: [8]Level.Vec2 = undefined;
-                    const vertex_count: usize = @intCast(polygon.count);
-                    for (vertices[0..vertex_count], polygon.vertices[0..vertex_count]) |*vt, vf| {
-                        vt.* = .{ .x = vf.x, .y = vf.y };
-                    }
-                    const pos = body.getPosition();
-                    object.* = .{ .polygon = .{
-                        .vertices = vertices,
-                        .centroid = .{ .x = pos.x, .y = pos.y },
-                        .count = polygon.count,
-                        .radius = polygon.radius,
-                        .position = .{ .x = pos.x, .y = pos.y },
-                    } };
-                },
-                else => {
-                    std.log.err("Shape saving is not supported: {d}", .{shape_type});
-                },
-            }
-        }
-    }
-    try level.save_to_file(path);
-}
-
-fn load(state: *GameState) !void {
-    var buffer: [std.posix.HOST_NAME_MAX]u8 = undefined;
-    const path = try std.fs.path.join(state.arena.allocator(), &.{
-        try std.fs.selfExeDirPath(&buffer),
-        "level.json",
-    });
-
-    const Level = @import("Level.zig");
-
-    const level = try Level.read_from_file(state.arena.allocator(), path);
-
-    for (state.bodies.items) |*item| {
-        item.destroy();
-    }
-    state.bodies.clearRetainingCapacity();
-    state.physics_world.destroy();
-
-    var def = getWorldDefenition();
-    state.physics_world = box2d.World.create(&def);
-    for (level.objects) |object| {
-        switch (object) {
-            .circle => |circle| {
-                addCircle(state, .{ .x = circle.center.x, .y = circle.center.y }, .{ .x = 0, .y = 0 }, .dinamic);
-            },
-            .polygon => |polygon| {
-                var bodyDef: box2d.c.b2BodyDef = box2d.c.b2DefaultBodyDef();
-                bodyDef.type = box2d.c.b2_kinematicBody;
-                bodyDef.position = .{ .x = polygon.position.x, .y = polygon.position.y };
-                std.debug.print("position: {any}\n", .{bodyDef.position});
-                const body = box2d.c.b2CreateBody(state.physics_world.id, &bodyDef);
-                var vertices: [8]box2d.c.b2Vec2 = undefined;
-                const vertex_count: usize = @intCast(polygon.count);
-                for (vertices[0..vertex_count], polygon.vertices[0..vertex_count]) |*vt, vf| {
-                    vt.* = .{ .x = vf.x, .y = vf.y };
-                }
-                var box: box2d.c.b2Polygon = box2d.c.b2MakePolygon(&.{
-                    .points = vertices,
-                    .count = polygon.count,
-                }, polygon.radius);
-
-                var shapeDef: box2d.c.b2ShapeDef = box2d.c.b2DefaultShapeDef();
-                shapeDef.friction = 0.6;
-                shapeDef.density = 2.0;
-
-                _ = box2d.c.b2CreatePolygonShape(body, &shapeDef, &box);
-
-                try state.bodies.append(state.gpa, box2d.Body{ .id = body });
-            },
-        }
-    }
-}
-
-fn gameInput(state: *GameState) void {
+fn gameInput(state: *Game) !void {
     if (rl.isMouseButtonReleased(.mouse_button_left)) {
         if (state.mouse_pressed) |start| {
             const vec = calculate_speed(start, rl.getMousePosition());
-            addCircle(state, start, vec, .kinematic);
+            try state.bodies.append(
+                state.gpa,
+                Object.createCircle(
+                    state,
+                    start,
+                    vec,
+                    .dynamic,
+                    30,
+                    "bird",
+                ),
+            );
         }
     }
     if (rl.isMouseButtonReleased(.mouse_button_right)) {
         if (state.mouse_pressed) |start| {
-            const vec = calculate_speed(start, rl.getMousePosition());
-            addCircle(state, start, vec, .dinamic);
+            const end = rl.getMousePosition();
+            try state.bodies.append(
+                state.gpa,
+                Object.createThickLine(
+                    state,
+                    start,
+                    end,
+                    .dynamic,
+                    20,
+                    "block",
+                ),
+            );
         }
     }
     _ = mouse_shift(state);
 }
 
-fn generalInput(state: *GameState) void {
+fn generalInput(state: *Game) void {
     if (rl.isKeyPressed(.key_e)) {
-        state.state.toggle();
+        state.state.editor.toggle();
     }
     if (rl.isKeyPressed(.key_space)) {
-        state.pause_state.toggle();
-        std.log.debug("state changed: {s}", .{@tagName(state.pause_state)});
+        state.state.pause.toggle();
     }
-    // if (rl.isKeyPressed(.key_s)) saving: {
-    //     {
-    //         const time = std.time.Instant.now() catch return .exit;
-    //         std.log.info("Saving to file: {s}", .{"./level.json"});
-    //         save(state) catch |err| {
-    //             std.log.err("Failed to save file with error: {s}", .{@errorName(err)});
-    //             break :saving;
-    //         };
-    //         const delta = (std.time.Instant.now() catch return .exit).since(time);
-    //         std.log.info("Saved... It took {d}s", .{frac(delta, std.time.ns_per_s)});
-    //     }
-    //     {
-    //         const time = std.time.Instant.now() catch return .exit;
-    //         std.log.info("Loading from file: {s}", .{"./level.json"});
-    //         load(state) catch |err| {
-    //             std.log.err("Failed to load from file with error: {s}", .{@errorName(err)});
-    //             break :saving;
-    //         };
-    //         const delta = (std.time.Instant.now() catch return .exit).since(time);
-    //         std.log.info("Loaded... It took {d}s", .{frac(delta, std.time.ns_per_s)});
-    //     }
-    // }
 }
 
-pub fn gameTick(state: *GameState) !Action {
+pub fn gameTick(state: *Game) !Action {
     if (!state.arena.reset(.retain_capacity)) {
         std.log.err("Arena realloc faled", .{});
     }
@@ -345,18 +209,17 @@ pub fn gameTick(state: *GameState) !Action {
 
     generalInput(state);
     // update physics
-    if (state.pause_state == .play) {
-        gameInput(state);
+    if (state.state.pause == .play) {
+        gameInput(state) catch @panic("OOM");
         updatePhysics(state);
     }
 
     // draw screen
 
     rl.beginDrawing();
-    // rl.clearBackground(@bitCast(gui.GetColor(@intCast(gui.GuiGetStyle(gui.DEFAULT, gui.BACKGROUND_COLOR)))));
     rl.clearBackground(rl.Color.dark_gray);
 
-    if (state.state != .editor) {
+    if (state.state.editor != .editor) {
         {
             if (state.mouse_pressed) |start| {
                 rl.drawCircle(@intFromFloat(start.x), @intFromFloat(start.y), 10, rl.Color.orange);
@@ -374,57 +237,19 @@ pub fn gameTick(state: *GameState) !Action {
             const number_of_balls = std.fmt.bufPrintZ(&buf, "balls: {d}", .{state.bodies.items.len}) catch "Error :(";
             rl.drawText(number_of_balls, 0, 100, 30, rl.Color.white);
 
-            if (state.debug_draw) {
+            if (state.state.debug_draw) {
                 var debug_draw_struct: DebugDraw = .{};
                 state.physics_world.draw(&debug_draw_struct);
             }
 
             for (state.bodies.items) |item| {
-                switch (item.getType()) {
-                    .dynamic_body => {
-                        const position = item.getPosition();
-                        const bird_slice = state.atlas.mapping.get("bird") orelse unreachable;
-                        rl.drawTexturePro(
-                            state.atlas.atlas,
-                            bird_slice,
-                            .{
-                                .x = position.x,
-                                .y = position.y,
-                                .width = 30 * 2,
-                                .height = 30 * 2,
-                            },
-                            .{ .x = 30, .y = 30 },
-                            item.getAngle() * std.math.deg_per_rad,
-                            rl.Color.white,
-                        );
-                    },
-                    .kinematic_body => {
-                        const position = item.getPosition();
-                        const bird_slice = state.atlas.mapping.get("wood") orelse unreachable;
-                        var shapes: [1]box2d.Shape = undefined;
-                        std.debug.assert(1 == item.getShapes(&shapes));
-
-                        rl.drawTexturePro(
-                            state.atlas.atlas,
-                            bird_slice,
-                            .{
-                                .x = position.x,
-                                .y = position.y,
-                                .width = 30 * 2,
-                                .height = 30 * 2,
-                            },
-                            .{ .x = 30, .y = 30 },
-                            item.getAngle() * std.math.deg_per_rad,
-                            rl.Color.white,
-                        );
-                    },
-                    else => {},
-                }
+                item.draw(state.*);
             }
+
             rl.drawFPS(0, 0);
         }
 
-        if (state.pause_state == .pause) {
+        if (state.state.pause == .pause) {
             rl.beginBlendMode(@intFromEnum(rl.BlendMode.blend_multiplied));
             rl.drawRectangle(0, 0, window_size[0], window_size[1], .{
                 .r = 100,
@@ -445,11 +270,11 @@ pub fn gameTick(state: *GameState) !Action {
         rl.drawFPS(0, 0);
     }
     if (button(.{ .x = 1000, .y = 100 }, "Pause", .{ .font_size = 20 }) == .pressed) {
-        state.pause_state.toggle();
+        state.state.pause.toggle();
         std.log.debug("button pressed", .{});
     }
     if (button(.{ .x = 1200, .y = 100 }, "Debug", .{ .font_size = 20 }) == .pressed) {
-        state.debug_draw = !state.debug_draw;
+        state.state.debug_draw = !state.state.debug_draw;
         std.log.debug("button pressed", .{});
     }
 

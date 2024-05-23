@@ -80,7 +80,7 @@ fn loadSlice(alloc: std.mem.Allocator, path: []const u8) !std.StringHashMapUnman
         const key = try alloc.dupe(u8, slice.name);
         errdefer alloc.free(key);
         const entry = try slices.getOrPut(alloc, key);
-        if (entry.found_existing) return error.FoundRepeatingLables;
+        if (entry.found_existing) return error.FoundRepeatingLabels;
 
         std.debug.assert(slice.keys.len == 1);
         const bounds = slice.keys[0].bounds;
@@ -89,7 +89,7 @@ fn loadSlice(alloc: std.mem.Allocator, path: []const u8) !std.StringHashMapUnman
     return slices;
 }
 
-/// User must provide path without extention. It will use json and png extension to load files.
+/// User must provide path without extension. It will use json and png extension to load files.
 /// User must call deinit() on result.
 pub fn loadSpriteSheet(alloc: std.mem.Allocator, path: []const u8) !@This() {
     const image_path = try std.fmt.allocPrintZ(

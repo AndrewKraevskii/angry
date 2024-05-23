@@ -1,4 +1,4 @@
-const State = @import("./game.zig").GameState;
+const State = @import("./game.zig").Game;
 const Action = @import("./game.zig").Action;
 const std = @import("std");
 

@@ -28,9 +28,9 @@ pub fn button(pos: rl.Vector2, text: []const u8, config: ButtonConfig) State {
     const textz = std.fmt.bufPrintZ(&buffer, "{s}", .{text}) catch {
         @panic("Text is too long: expect text to be " ++ std.fmt.comptimePrint("{d}", .{max_test_size}) ++ " long");
     };
-    const mesured_text_size = rl.measureTextEx(rl.getFontDefault(), textz, config.font_size, config.spacing);
+    const measured_text_size = rl.measureTextEx(rl.getFontDefault(), textz, config.font_size, config.spacing);
 
-    const size = rlm.vector2Add(mesured_text_size, rlm.vector2Scale(rlm.vector2One(), 2 * config.padding));
+    const size = rlm.vector2Add(measured_text_size, rlm.vector2Scale(rlm.vector2One(), 2 * config.padding));
 
     rl.drawRectangleV(.{ .x = pos.x, .y = pos.y }, size, config.background_color);
     rl.drawTextEx(

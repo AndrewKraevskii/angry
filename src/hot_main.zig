@@ -1,7 +1,7 @@
 const std = @import("std");
 const Watcher = @import("./Watcher.zig");
 
-const GameState = @import("./game.zig").GameState;
+const GameState = @import("./game.zig").Game;
 const Action = @import("game.zig").Action;
 
 pub const window_size = .{ 1920, 1080 };
