@@ -92,6 +92,13 @@ fn build_plain(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     const raylib_math = raylib_dep.module("raylib-math");
     const raylib_artifact = raylib_dep.artifact("raylib");
 
+    const ztracy = b.dependency("ztracy", .{
+        .enable_ztracy = true,
+        .enable_fibers = true,
+    });
+    exe.root_module.addImport("ztracy", ztracy.module("root"));
+    exe.linkLibrary(ztracy.artifact("tracy"));
+
     exe.linkLibrary(raylib_artifact);
     exe.root_module.addImport("raylib", raylib);
     exe.root_module.addImport("raylib-math", raylib_math);

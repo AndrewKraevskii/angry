@@ -10,6 +10,7 @@ const SpriteSheet = @import("./aseprite/SpriteSheet.zig");
 const Object = @import("Object.zig");
 const Vec2 = @import("math.zig").Vec2;
 
+const tracy = @import("ztracy");
 pub const Block = struct {
     color: rl.Color,
 };
@@ -137,9 +138,13 @@ fn createLevel(state: *Game) void {
 }
 
 fn updatePhysics(state: *Game) void {
+    const zone = tracy.ZoneN(@src(), "UpdatePhysics");
+    defer zone.End();
     var frame_time = rl.getFrameTime() + state.left_over_time;
     const step_time: f32 = 1.0 / 1000.0;
     while (frame_time > step_time) : (frame_time -= step_time) {
+        const physics_step = tracy.ZoneN(@src(), "UpdateStep");
+        defer physics_step.End();
         state.physics_world.step(
             step_time,
             5,

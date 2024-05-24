@@ -14,16 +14,15 @@
     // `zig build --fetch` can be used to fetch all dependencies of a package, recursively.
     // Once all dependencies are fetched, `zig build` no longer requires
     // internet connectivity.
-    .dependencies = .{
-        .@"raylib-zig" = .{
-            .url = "https://github.com/Not-Nik/raylib-zig/archive/devel.tar.gz",
-            .hash = "122043ae5d7dc535006aca53271bf37b64fcbb66851a7982f5914fa6166747884f60",
-        },
-        .box2d = .{
-            .url = "https://github.com/erincatto/box2c/archive/8f89cdc8f0b3f77f9bfe5c6d089158b86cc55d92.tar.gz",
-            .hash = "12204af7d2a1c1d6cd27fe1b8dd1e09880d905f57c4a25aff51553ac95777439f444",
-        },
-    },
+    .dependencies = .{ .@"raylib-zig" = .{
+        .url = "https://github.com/Not-Nik/raylib-zig/archive/devel.tar.gz",
+        .hash = "122043ae5d7dc535006aca53271bf37b64fcbb66851a7982f5914fa6166747884f60",
+    }, .box2d = .{
+        .url = "https://github.com/erincatto/box2c/archive/8f89cdc8f0b3f77f9bfe5c6d089158b86cc55d92.tar.gz",
+        .hash = "12204af7d2a1c1d6cd27fe1b8dd1e09880d905f57c4a25aff51553ac95777439f444",
+    }, .ztracy = .{
+        .path = "./libs/ztracy",
+    } },
     .paths = .{
         // This makes *all* files, recursively, included in this package. It is generally
         // better to explicitly list the files and directories instead, to insure that
