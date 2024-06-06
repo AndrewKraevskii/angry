@@ -1,6 +1,5 @@
 const std = @import("std");
 const rl = @import("raylib");
-const rlm = @import("raylib-math");
 const math = @import("../math.zig");
 
 const Vec2 = math.Vec2;
@@ -30,7 +29,7 @@ pub fn button(pos: rl.Vector2, text: []const u8, config: ButtonConfig) State {
     };
     const measured_text_size = rl.measureTextEx(rl.getFontDefault(), textz, config.font_size, config.spacing);
 
-    const size = rlm.vector2Add(measured_text_size, rlm.vector2Scale(rlm.vector2One(), 2 * config.padding));
+    const size = measured_text_size.add(rl.Vector2.one().scale(2 * config.padding));
 
     rl.drawRectangleV(.{ .x = pos.x, .y = pos.y }, size, config.background_color);
     rl.drawTextEx(
@@ -41,7 +40,7 @@ pub fn button(pos: rl.Vector2, text: []const u8, config: ButtonConfig) State {
         config.spacing,
         config.color,
     );
-    const normalized_cursor = rlm.vector2Subtract(rl.getMousePosition(), pos);
+    const normalized_cursor = rl.getMousePosition().subtract(pos);
     if (normalized_cursor.x > 0 and normalized_cursor.y > 0 and normalized_cursor.x < size.x and normalized_cursor.y < size.y) {
         return if (rl.isMouseButtonPressed(.mouse_button_left))
             .pressed

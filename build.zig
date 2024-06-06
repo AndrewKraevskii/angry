@@ -37,8 +37,6 @@ fn build_hot_reload(b: *std.Build, target: std.Build.ResolvedTarget, optimize: s
     });
 
     const raylib = raylib_dep.module("raylib");
-    const raylib_math = raylib_dep.module("raylib-math");
-    const rlgl = raylib_dep.module("rlgl");
     const raylib_artifact = raylib_dep.artifact("raylib");
 
     const options = b.addOptions();
@@ -49,13 +47,9 @@ fn build_hot_reload(b: *std.Build, target: std.Build.ResolvedTarget, optimize: s
 
     exe.linkLibrary(raylib_artifact);
     exe.root_module.addImport("raylib", raylib);
-    exe.root_module.addImport("raylib-math", raylib_math);
-    exe.root_module.addImport("rlgl", rlgl);
 
     shared_lib.linkLibrary(raylib_artifact);
     shared_lib.root_module.addImport("raylib", raylib);
-    shared_lib.root_module.addImport("raylib-math", raylib_math);
-    shared_lib.root_module.addImport("rlgl", rlgl);
 
     shared_lib.linkLibC();
     linkWithBox2d(b, shared_lib);
@@ -89,7 +83,6 @@ fn build_plain(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     });
 
     const raylib = raylib_dep.module("raylib");
-    const raylib_math = raylib_dep.module("raylib-math");
     const raylib_artifact = raylib_dep.artifact("raylib");
 
     const ztracy = b.dependency("ztracy", .{
@@ -101,7 +94,6 @@ fn build_plain(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
 
     exe.linkLibrary(raylib_artifact);
     exe.root_module.addImport("raylib", raylib);
-    exe.root_module.addImport("raylib-math", raylib_math);
 
     exe.linkLibC();
     linkWithBox2d(b, exe);
@@ -122,7 +114,6 @@ fn build_plain(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     });
     testing.linkLibrary(raylib_artifact);
     testing.root_module.addImport("raylib", raylib);
-    testing.root_module.addImport("raylib-math", raylib_math);
 
     testing.linkLibC();
     linkWithBox2d(b, testing);

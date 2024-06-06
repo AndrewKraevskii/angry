@@ -6,7 +6,6 @@ const Vec2 = math.Vec2;
 const toVec = math.toVec;
 const toBox = math.toBox;
 const rl = @import("raylib");
-const rlm = @import("raylib-math");
 
 body: box2d.Body,
 name: []const u8,
@@ -78,17 +77,17 @@ pub fn createThickLine(
         .dynamic => box2d.c.b2_dynamicBody,
         .kinematic => box2d.c.b2_kinematicBody,
     };
-    body_def.position = toBox(rlm.vector2Lerp(start, end, 0.5));
+    body_def.position = toBox(start.lerp(end, 0.5));
 
     body_def.linearDamping = 0.999;
     body_def.angularDamping = 0.999;
-    body_def.angle = -rlm.vector2LineAngle(start, end) + std.math.pi / 2.0;
+    body_def.angle = -start.lineAngle(end) + std.math.pi / 2.0;
 
     std.log.debug("body_def.angle: {d}", .{body_def.angle});
 
     var body = state.physics_world.createBody(&body_def);
 
-    const size = Vec2{ .x = thickness, .y = rlm.vector2Distance(start, end) };
+    const size = Vec2{ .x = thickness, .y = start.distance(end) };
 
     const box = box2d.Polygon.makeBox(size.x / 2, size.y / 2);
     var shape_def: box2d.c.b2ShapeDef = box2d.Shape.defaultDef();

@@ -1,6 +1,5 @@
 const std = @import("std");
 pub const rl = @import("raylib");
-pub const rlm = @import("raylib-math");
 const window_size = @import("main.zig").window_size;
 const box2rlColor = @import("utils.zig").box2rlColor;
 const frac = @import("utils.zig").frac;
@@ -255,7 +254,7 @@ pub fn gameTick(state: *Game) !Action {
         }
 
         if (state.state.pause == .pause) {
-            rl.beginBlendMode(@intFromEnum(rl.BlendMode.blend_multiplied));
+            rl.beginBlendMode(.blend_multiplied);
             rl.drawRectangle(0, 0, window_size[0], window_size[1], .{
                 .r = 100,
                 .g = 100,
@@ -288,8 +287,8 @@ pub fn gameTick(state: *Game) !Action {
 }
 
 fn calculate_speed(start: rl.Vector2, end: rl.Vector2) rl.Vector2 {
-    var vec = rlm.vector2Subtract(start, end);
-    vec = rlm.vector2Scale(vec, strench_scale);
+    var vec = start.subtract(end);
+    vec = vec.scale(strench_scale);
     return vec;
 }
 
