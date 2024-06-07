@@ -47,21 +47,8 @@ pub const Game = struct {
                 };
             }
         },
-        editor: enum {
-            game,
-            editor,
-            fn toggle(self: *@This()) void {
-                self.* = switch (self.*) {
-                    .game => .editor,
-                    .editor => .game,
-                };
-            }
-        },
-        debug_draw: bool,
     } = .{
         .pause = .play,
-        .editor = .game,
-        .debug_draw = true,
     },
     camera: rl.Camera2D,
     left_over_time: f32 = 0,
@@ -191,9 +178,6 @@ fn gameInput(state: *Game) !void {
 }
 
 fn generalInput(state: *Game) void {
-    if (rl.isKeyPressed(.key_e)) {
-        state.state.editor.toggle();
-    }
     if (rl.isKeyPressed(.key_space)) {
         state.state.pause.toggle();
     }
@@ -223,55 +207,44 @@ pub fn gameTick(state: *Game) !Action {
     rl.beginDrawing();
     rl.clearBackground(rl.Color.dark_gray);
 
-    if (state.state.editor != .editor) {
-        {
-            if (state.mouse_pressed) |start| {
-                rl.drawCircle(@intFromFloat(start.x), @intFromFloat(start.y), 10, rl.Color.orange);
-                draw_trace(start, rl.getMousePosition());
-                rl.drawLine(
-                    @intFromFloat(start.x),
-                    @intFromFloat(start.y),
-                    rl.getMouseX(),
-                    rl.getMouseY(),
-                    rl.Color.green,
-                );
-            }
-
-            var buf: [100]u8 = undefined;
-            const number_of_balls = std.fmt.bufPrintZ(&buf, "balls: {d}", .{state.bodies.items.len}) catch "Error :(";
-            rl.drawText(number_of_balls, 0, 100, 30, rl.Color.white);
-
-            if (state.state.debug_draw) {
-                var debug_draw_struct: DebugDraw = .{};
-                state.physics_world.draw(&debug_draw_struct);
-            }
-
-            for (state.bodies.items) |item| {
-                item.draw(state.*);
-            }
-
-            rl.drawFPS(0, 0);
+    {
+        if (state.mouse_pressed) |start| {
+            rl.drawCircle(@intFromFloat(start.x), @intFromFloat(start.y), 10, rl.Color.orange);
+            draw_trace(start, rl.getMousePosition());
+            rl.drawLine(
+                @intFromFloat(start.x),
+                @intFromFloat(start.y),
+                rl.getMouseX(),
+                rl.getMouseY(),
+                rl.Color.green,
+            );
         }
 
-        if (state.state.pause == .pause) {
-            rl.beginBlendMode(.blend_multiplied);
-            rl.drawRectangle(0, 0, window_size[0], window_size[1], .{
-                .r = 100,
-                .g = 100,
-                .b = 100,
-                .a = 255,
-            });
-            rl.endBlendMode();
-            {
-                const font = 40;
-                const size = rl.measureText("Paused", font);
-                rl.drawText("Paused", @divFloor(window_size[0] - size, 2), window_size[1] / 2, font, rl.Color.white);
-            }
+        var buf: [100]u8 = undefined;
+        const number_of_balls = std.fmt.bufPrintZ(&buf, "balls: {d}", .{state.bodies.items.len}) catch "Error :(";
+        rl.drawText(number_of_balls, 0, 100, 30, rl.Color.white);
+
+        for (state.bodies.items) |item| {
+            item.draw(state.*);
         }
-    } else {
-        var draw = DebugDraw{};
-        state.physics_world.draw(&draw);
+
         rl.drawFPS(0, 0);
+    }
+
+    if (state.state.pause == .pause) {
+        rl.beginBlendMode(.blend_multiplied);
+        rl.drawRectangle(0, 0, window_size[0], window_size[1], .{
+            .r = 100,
+            .g = 100,
+            .b = 100,
+            .a = 255,
+        });
+        rl.endBlendMode();
+        {
+            const font = 40;
+            const size = rl.measureText("Paused", font);
+            rl.drawText("Paused", @divFloor(window_size[0] - size, 2), window_size[1] / 2, font, rl.Color.white);
+        }
     }
     if (gui.guiButton(.{
         .x = 1000,
@@ -280,15 +253,6 @@ pub fn gameTick(state: *Game) !Action {
         .height = 30,
     }, "Pause") != 0) {
         state.state.pause.toggle();
-        std.log.debug("button pressed", .{});
-    }
-    if (gui.guiButton(.{
-        .x = 1200,
-        .y = 100,
-        .width = 100,
-        .height = 30,
-    }, "Debug") != 0) {
-        state.state.debug_draw = !state.state.debug_draw;
         std.log.debug("button pressed", .{});
     }
 

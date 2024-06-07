@@ -1,72 +1,10 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    const with_hot_reloading = b.option(bool, "hot_reload", "add ability to hot reload game (linux only)") orelse
-        false;
-
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    if (with_hot_reloading) {
-        build_hot_reload(b, target, optimize);
-    } else {
-        build_plain(b, target, optimize);
-    }
-}
-
-fn build_hot_reload(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
-    const game_only = b.option(bool, "game_only", "only build the game shared library") orelse false;
-    const lib_name = b.option([]const u8, "lib_name", "name to use when building shared") orelse "game";
-    const shared_lib = b.addSharedLibrary(.{
-        .name = lib_name,
-        .root_source_file = b.path("src/hot_game.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-
-    const exe = b.addExecutable(.{
-        .name = "angry",
-        .root_source_file = b.path("src/hot_main.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-
-    const raylib_dep = b.dependency("raylib-zig", .{
-        .target = target,
-        .optimize = optimize,
-    });
-
-    const raylib = raylib_dep.module("raylib");
-    const raylib_artifact = raylib_dep.artifact("raylib");
-
-    const options = b.addOptions();
-    options.addOption(bool, "hot_reload", true);
-
-    exe.root_module.addOptions("config", options);
-    shared_lib.root_module.addOptions("config", options);
-
-    exe.linkLibrary(raylib_artifact);
-    exe.root_module.addImport("raylib", raylib);
-
-    shared_lib.linkLibrary(raylib_artifact);
-    shared_lib.root_module.addImport("raylib", raylib);
-
-    shared_lib.linkLibC();
-    linkWithBox2d(b, shared_lib);
-    linkWithBox2d(b, exe);
-
-    exe.linkLibrary(shared_lib);
-    const run_cmd = b.addRunArtifact(exe);
-    if (game_only) {
-        b.installArtifact(shared_lib);
-    } else {
-        b.installArtifact(exe);
-        b.installArtifact(shared_lib);
-    }
-
-    run_cmd.step.dependOn(b.getInstallStep());
-    const run_step = b.step("run", "Run the app");
-    run_step.dependOn(&run_cmd.step);
+    build_plain(b, target, optimize);
 }
 
 fn build_plain(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
@@ -144,7 +82,6 @@ fn linkWithBox2d(
         "allocate.c",
         "array.c",
         "bitset.c",
-        "block_allocator.c",
         "block_array.c",
         "body.c",
         "broad_phase.c",
@@ -158,7 +95,6 @@ fn linkWithBox2d(
         "geometry.c",
         "hull.c",
         "id_pool.c",
-        "implementation.c",
         "island.c",
         "joint.c",
         "manifold.c",
