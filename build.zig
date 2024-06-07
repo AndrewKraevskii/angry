@@ -83,6 +83,7 @@ fn build_plain(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
     });
 
     const raylib = raylib_dep.module("raylib");
+    const raygui = raylib_dep.module("raygui");
     const raylib_artifact = raylib_dep.artifact("raylib");
 
     const ztracy = b.dependency("ztracy", .{
@@ -94,6 +95,7 @@ fn build_plain(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bu
 
     exe.linkLibrary(raylib_artifact);
     exe.root_module.addImport("raylib", raylib);
+    exe.root_module.addImport("raygui", raygui);
 
     exe.linkLibC();
     linkWithBox2d(b, exe);

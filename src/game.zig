@@ -1,5 +1,6 @@
 const std = @import("std");
 pub const rl = @import("raylib");
+pub const gui = @import("raygui");
 const window_size = @import("main.zig").window_size;
 const box2rlColor = @import("utils.zig").box2rlColor;
 const frac = @import("utils.zig").frac;
@@ -209,7 +210,6 @@ pub fn gameTick(state: *Game) !Action {
     if (rl.windowShouldClose()) {
         return .exit;
     }
-    const button = @import("./ui/button.zig").button;
 
     generalInput(state);
     // update physics
@@ -273,11 +273,21 @@ pub fn gameTick(state: *Game) !Action {
         state.physics_world.draw(&draw);
         rl.drawFPS(0, 0);
     }
-    if (button(.{ .x = 1000, .y = 100 }, "Pause", .{ .font_size = 20 }) == .pressed) {
+    if (gui.guiButton(.{
+        .x = 1000,
+        .y = 100,
+        .width = 100,
+        .height = 30,
+    }, "Pause") != 0) {
         state.state.pause.toggle();
         std.log.debug("button pressed", .{});
     }
-    if (button(.{ .x = 1200, .y = 100 }, "Debug", .{ .font_size = 20 }) == .pressed) {
+    if (gui.guiButton(.{
+        .x = 1200,
+        .y = 100,
+        .width = 100,
+        .height = 30,
+    }, "Debug") != 0) {
         state.state.debug_draw = !state.state.debug_draw;
         std.log.debug("button pressed", .{});
     }
